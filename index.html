@@ -21,8 +21,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
 #msg { position: fixed; inset: 0 0 44px 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 16px; line-height: 1.8; color: #ccc; }
 @media (max-width: 720px) { #hint, #title { display: none; } }
 
-/* Inside the presenter view: the slide only. */
-.embed #bar, .embed #stage .nav { display: none; }
+/* Inside the presenter view: no bar; the preview of the next slide (solo) has no arrows either. */
+.embed #bar, .solo #stage .nav { display: none; }
 .embed #viewport, .embed #msg { inset: 0; }
 .embed #stage { box-shadow: none; }
 /* Slide navigation: an arrow appears when the pointer is over the left or right margin of the slide. */
@@ -97,6 +97,7 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
   // ?embed: shown inside the presenter view (no bar, no arrows). ?solo: does not follow other windows.
   var query = new URLSearchParams(location.search);
   if (query.has('embed')) document.documentElement.classList.add('embed');
+  if (query.has('solo')) document.documentElement.classList.add('solo');
   // Windows of this deck that are open in the same browser stay on the same slide and the same enlarged block.
   var chan = null;
   try { if (!query.has('solo') && 'BroadcastChannel' in window) chan = new BroadcastChannel('lsj173-deck'); } catch (e) { chan = null; }
