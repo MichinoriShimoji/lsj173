@@ -94,6 +94,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
   var NO_ZOOM = { cover: 1, sursurunga: 1, abruzzese: 1, operational: 1 };
   // Slides whose gray boxes are statements or figures, not example cards.
   var NO_CARD = { claim: 1, cross: 1, questions: 1, operational: 1 };
+  // Slides where only the last gray card enlarges.
+  var LAST_CARD = { typology: 1 };
   var GRAY = /background(-color)?\s*:\s*#f3f3f3/i;
   // Slides whose wide card is re-stacked while enlarged (see .stack).
   var STACK = { selection: 1 };
@@ -147,6 +149,10 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
         el.classList.add('scene', 'card');
         if (STACK[sec.id]) el.classList.add('stackable');
       });
+      if (LAST_CARD[sec.id]) {
+        var cards = sec.querySelectorAll('.scene.card');
+        for (var c = 0; c < cards.length - 1; c++) cards[c].classList.remove('scene', 'card');
+      }
     }
     (EXTRA[sec.id] || []).forEach(function (spec) {
       var ps = sec.querySelectorAll('p');
