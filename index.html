@@ -43,11 +43,15 @@ body.notes-on #notes { display: block; }
 
 /* ---------- hover: enlarge a scene (picture + caption + line) ---------- */
 #stage section .scene { position: relative; transition: transform .2s ease, box-shadow .2s ease; }
-#stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: scale(var(--zoom, 1.45)); pointer-events: none; }
+#stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: translateX(var(--dx, 0px)) scale(var(--zoom, 1.45)); pointer-events: none; }
 #stage section .scene.card.zoom { background-color: #f3f3f3; border-radius: 10px; box-shadow: 0 0 0 6px #fff, 0 14px 60px 10px rgba(0,0,0,.34); }
 /* A wide one-row card whose parts are stacked while enlarged, so it can grow more. */
 #stage section .scene.card.stack { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
 #stage section .scene.card.stack div { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
+/* A block of label + line rows: while enlarged, each label sits above its line. */
+#stage section .scene.rows.stack { gap: 16px !important; }
+#stage section .scene.rows.stack > div { flex-direction: column !important; align-items: flex-start !important; gap: 0 !important; }
+#stage section .scene.rows.stack > div > p:first-child { width: auto !important; }
 @media (prefers-reduced-motion: reduce) { #stage section, #stage section .scene { transition: none; } }
 </style>
 </head>
@@ -81,7 +85,11 @@ body.notes-on #notes { display: block; }
   // Slides whose wide card is re-stacked while enlarged (see .stack).
   var STACK = { selection: 1 };
   // Other blocks that enlarge on hover: the block that holds the paragraph containing this text.
-  var EXTRA = { operational: ['3つの変数', '16条件の分布図'] };
+  //   up: how many levels above that paragraph the block is; rows: re-stack its rows while enlarged.
+  var EXTRA = {
+    operational: [{ key: '3つの変数', up: 1 }, { key: '16条件の分布図', up: 1 }],
+    hierarchy: [{ key: 'Bagvalal', up: 2, rows: true }]
+  };
 
   function fit() {
     var w = viewport.clientWidth, h = viewport.clientHeight;
@@ -128,12 +136,15 @@ body.notes-on #notes { display: block; }
         if (STACK[sec.id]) el.classList.add('stackable');
       });
     }
-    (EXTRA[sec.id] || []).forEach(function (key) {
+    (EXTRA[sec.id] || []).forEach(function (spec) {
       var ps = sec.querySelectorAll('p');
       for (var i = 0; i < ps.length; i++) {
-        var box = ps[i].parentElement;
-        if (ps[i].textContent.indexOf(key) < 0 || !box || box === sec || ps[i].closest('aside')) continue;
+        if (ps[i].textContent.indexOf(spec.key) < 0 || ps[i].closest('aside')) continue;
+        var box = ps[i];
+        for (var k = 0; k < spec.up && box; k++) box = box.parentElement;
+        if (!box || box === sec || !sec.contains(box)) continue;
         box.classList.add('scene');
+        if (spec.rows) box.classList.add('rows', 'stackable');
         break;
       }
     });
@@ -177,13 +188,17 @@ body.notes-on #notes { display: block; }
     var z = Math.min(1.6, 960 / h);
     var cx = x + w / 2, cy = y + h / 2;
     var ox = cx < 1920 * 0.4 ? 'left' : (cx > 1920 * 0.6 ? 'right' : 'center');
+    var dx = 0;
     if (w * z > 1840) {
-      // Too wide to grow as a whole: grow from the left, limited by where its text ends.
-      var tw = textWidth(box);
-      z = Math.min(z, (1900 - x) / (tw + 36));
+      // Too wide to grow as a whole: grow from the left, limited by where its content ends,
+      // and slide left into the margin when that buys more room.
+      var cw = contentWidth(box) + 36;
+      z = Math.min(z, 1880 / cw);
+      if (z < 1.1) z = 1.1;
       ox = 'left';
+      if (x + cw * z > 1900) dx = Math.max(20 - x, 1900 - (x + cw * z));
     }
-    if (z < 1.1) z = 1.1;
+    box.style.setProperty('--dx', dx.toFixed(1) + 'px');
     var oy = cy < 1080 * 0.42 ? 'top' : (cy > 1080 * 0.6 ? 'bottom' : 'center');
     box.style.transformOrigin = ox + ' ' + oy;
     box.style.setProperty('--zoom', z.toFixed(3));
@@ -191,8 +206,8 @@ body.notes-on #notes { display: block; }
   }
   function zoomOut(box) { box.classList.remove('zoom', 'stack'); }
 
-  // How far right the text and pictures of a box reach, in slide pixels from its left edge.
-  function textWidth(box) {
+  // How far right the text, pictures and painted shapes of a box reach, in slide pixels from its left edge.
+  function contentWidth(box) {
     var scale = stage.getBoundingClientRect().width / 1920 || 1;
     var left = box.getBoundingClientRect().left, right = left;
     var walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null);
@@ -205,6 +220,13 @@ body.notes-on #notes { display: block; }
     }
     box.querySelectorAll('img, svg').forEach(function (g) {
       var r = g.getBoundingClientRect(); if (r.right > right) right = r.right;
+    });
+    box.querySelectorAll('*').forEach(function (e) {
+      if (e.firstElementChild) return;
+      var cs = getComputedStyle(e);
+      var painted = (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') || parseFloat(cs.borderTopWidth) > 0;
+      if (!painted) return;
+      var r = e.getBoundingClientRect(); if (r.width && r.right > right) right = r.right;
     });
     return (right - left) / scale;
   }
