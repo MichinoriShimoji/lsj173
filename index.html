@@ -94,6 +94,9 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
   var msg = document.getElementById('msg');
   var slides = [];
   var cur = 0;
+  // The offline copy carries the slides and pictures inside the page (a block with id "deck-data").
+  var DATA = null;
+  try { var dataEl = document.getElementById('deck-data'); if (dataEl) DATA = JSON.parse(dataEl.textContent); } catch (e) { DATA = null; }
   // ?embed: shown inside the presenter view (no bar, no arrows). ?solo: does not follow other windows.
   var query = new URLSearchParams(location.search);
   if (query.has('embed')) document.documentElement.classList.add('embed');
@@ -142,6 +145,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     sec.querySelectorAll('img').forEach(function (img) {
       var m = /\/_blob\/([0-9a-f]+)/.exec(img.getAttribute('src') || '');
       if (m) img.setAttribute('src', 'img/' + m[1] + '.png');
+      var src = img.getAttribute('src');
+      if (DATA && DATA.images && DATA.images[src]) img.setAttribute('src', DATA.images[src]);
       img.setAttribute('draggable', 'false');
     });
     // Arrow connectors: a line with a head, as thick as its border-width.
@@ -379,8 +384,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     return m ? parseInt(m[1], 10) - 1 : 0;
   }
 
-  function load() {
-    fetch('project/deck.json', { cache: 'no-cache' }).then(function (r) {
+  function fetchParts() {
+    return fetch('project/deck.json', { cache: 'no-cache' }).then(function (r) {
       if (!r.ok) throw new Error('deck.json ' + r.status);
       return r.json();
     }).then(function (deck) {
@@ -391,7 +396,11 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
           return r.text();
         });
       }));
-    }).then(function (parts) {
+    });
+  }
+  function load() {
+    var parts = DATA ? Promise.resolve(DATA.order.map(function (id) { return DATA.slides[id] || ''; })) : fetchParts();
+    parts.then(function (parts) {
       var tmp = document.createElement('div');
       parts.forEach(function (html) {
         tmp.innerHTML = html;
@@ -429,7 +438,7 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     else if (k === 'Home') { show(0); e.preventDefault(); }
     else if (k === 'End') { show(slides.length - 1); e.preventDefault(); }
     // P: open the presenter view (notes, next slide, timer) in another window.
-    else if ((k === 'p' || k === 'P') && !query.has('embed')) { window.open('presenter.html?t=' + Date.now() + '#slide-' + (cur + 1), 'lsj173-presenter'); }
+    else if ((k === 'p' || k === 'P') && !query.has('embed') && !DATA) { window.open('presenter.html?t=' + Date.now() + '#slide-' + (cur + 1), 'lsj173-presenter'); }
   });
   window.addEventListener('hashchange', function () { var i = fromHash(); if (i !== cur) show(i, true); });
   window.addEventListener('resize', fit);
