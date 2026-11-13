@@ -110,9 +110,9 @@ button.main:hover { background: #fff; }
     if (last) return;
     var hash = '#slide-' + (cur + 2);
     try {
-      if (nextFrame.contentWindow && nextFrame.getAttribute('src')) nextFrame.contentWindow.location.replace('index.html?embed=1&solo=1' + stamp + hash);
-      else nextFrame.setAttribute('src', 'index.html?embed=1&solo=1' + stamp + hash);
-    } catch (e) { nextFrame.setAttribute('src', 'index.html?embed=1&solo=1' + stamp + hash); }
+      if (nextFrame.contentWindow && nextFrame.getAttribute('src')) nextFrame.contentWindow.location.replace('viewer.html?embed=1&solo=1' + stamp + hash);
+      else nextFrame.setAttribute('src', 'viewer.html?embed=1&solo=1' + stamp + hash);
+    } catch (e) { nextFrame.setAttribute('src', 'viewer.html?embed=1&solo=1' + stamp + hash); }
   }
   // remote: another window moved; this view only follows.
   function set(i, remote) {
@@ -224,7 +224,7 @@ button.main:hover { background: #fff; }
   document.getElementById('b-next').addEventListener('click', function () { this.blur(); set(cur + 1); });
   document.getElementById('open').addEventListener('click', function () {
     this.blur();
-    window.open('index.html?' + stamp.slice(1) + '#slide-' + (cur + 1), 'lsj173-audience', 'popup,width=1280,height=764');
+    window.open('viewer.html?' + stamp.slice(1) + '#slide-' + (cur + 1), 'lsj173-audience', 'popup,width=1280,height=764');
   });
   var size = 22;
   try { size = parseInt(localStorage.getItem('lsj173-notes-size'), 10) || 22; } catch (e) { /* no storage */ }
@@ -272,7 +272,7 @@ button.main:hover { background: #fff; }
     readyAt = Date.now();
     msg.style.display = 'none';
     cur = Math.max(0, Math.min(notes.length - 1, fromHash()));
-    curFrame.setAttribute('src', 'index.html?embed=1' + stamp + '#slide-' + (cur + 1));
+    curFrame.setAttribute('src', 'viewer.html?embed=1' + stamp + '#slide-' + (cur + 1));
     set(cur, true);
   }).catch(function (err) {
     msg.textContent = '読み込めませんでした（' + err.message + '）。';

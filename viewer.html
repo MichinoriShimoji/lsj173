@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>代名詞複数と仲間性：北琉球今帰仁謝名方言の包括代名詞（HTML版）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Charis+SIL:ital,wght@0,400;0,700;1,400;1,700&display=swap">
+<style>
+/* ---------- viewer shell ---------- */
+html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-family: 'Noto Sans JP', Arial, sans-serif; overflow: hidden; }
+#viewport { position: fixed; inset: 0 0 44px 0; overflow: hidden; }
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #fff; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
+#bar { position: fixed; left: 0; right: 0; bottom: 0; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box; background: #111; font-size: 14px; user-select: none; }
+#bar button { font: inherit; color: #e8e8e8; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 4px 12px; cursor: pointer; }
+#bar button:hover { background: #3a3a3a; }
+#bar button:focus-visible { outline: 2px solid #7aa2ff; outline-offset: 1px; }
+#count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+#title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #aaa; padding: 0 8px; }
+#hint { color: #888; white-space: nowrap; }
+#msg { position: fixed; inset: 0 0 44px 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 16px; line-height: 1.8; color: #ccc; }
+@media (max-width: 720px) { #hint, #title { display: none; } }
+
+/* Inside the presenter view: no bar; the preview of the next slide (solo) has no arrows either. */
+.embed #bar, .solo #stage .nav { display: none; }
+.embed #viewport, .embed #msg { inset: 0; }
+.embed #stage { box-shadow: none; }
+/* Slide navigation: an arrow appears when the pointer is over the left or right margin of the slide. */
+#stage .nav { position: absolute; top: 72px; bottom: 0; width: 112px; z-index: 50; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s ease; -webkit-tap-highlight-color: transparent; }
+#stage #prev { left: 0; }
+#stage #next { right: 0; }
+#stage .nav:hover, #stage .nav:focus-visible { opacity: 1; outline: none; }
+#stage .nav[disabled] { display: none; }
+#stage.zooming .nav { pointer-events: none; opacity: 0; }
+#stage .nav span { width: 76px; height: 76px; border-radius: 50%; background: rgba(255,255,255,.94); border: 1px solid #d4d4d4; box-shadow: 0 2px 12px rgba(0,0,0,.14); display: flex; align-items: center; justify-content: center; }
+#stage .nav:focus-visible span { border-color: #111; }
+#stage .nav svg { width: 38px; height: 38px; fill: none; stroke: #111; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+@media (hover: none) { #stage .nav { opacity: .45; } }
+/* ---------- slide rendering (same rules as the slide format) ---------- */
+#stage section { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; box-sizing: border-box; overflow: hidden; font-family: 'Noto Sans JP', Arial, sans-serif; font-size: 32px; line-height: 1.4; color: #111; background: #fff; opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; }
+#stage section.current { opacity: 1; visibility: visible; transition: opacity .25s ease; z-index: 2; }
+#stage section *, #stage section *::before, #stage section *::after { box-sizing: border-box; }
+#stage section :is(p, h1, h2, h3, hr, ul, ol, figure) { margin: 0; }
+#stage section p { line-height: 1.4; }
+#stage section h1 { font-size: 96px; font-weight: 600; line-height: 1.1; }
+#stage section h2 { font-size: 64px; font-weight: 600; line-height: 1.15; }
+#stage section h3 { font-size: 44px; font-weight: 600; line-height: 1.2; }
+#stage section div:not([style*="display"]) { display: flex; flex-direction: column; }
+#stage section img { display: block; flex: none; max-width: none; }
+#stage section svg { display: block; flex: none; }
+#stage section hr { border: 0; align-self: stretch; flex: none; }
+#stage section x-shape { display: block; }
+#stage section x-connector { display: block; position: relative; flex: none; background: currentColor; }
+#stage section x-connector::after { content: ""; position: absolute; right: -2px; top: 50%; border-style: solid; border-color: transparent transparent transparent currentColor; transform: translateY(-50%); border-width: var(--hh) 0 var(--hh) var(--hl); }
+#stage section aside { display: none; }
+
+/* ---------- hover: enlarge a scene (picture + caption + line) ---------- */
+#stage section .scene { position: relative; transition: transform .2s ease, box-shadow .2s ease; }
+#stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--zoom, 1.45)); pointer-events: none; }
+#stage section .scene.card.zoom { background-color: #f3f3f3; border-radius: 10px; box-shadow: 0 0 0 6px #fff, 0 14px 60px 10px rgba(0,0,0,.34); }
+/* A wide one-row card whose parts are stacked while enlarged, so it can grow more. */
+#stage section .scene.card.stack { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+#stage section .scene.card.stack div { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
+/* A block of label + line rows: while enlarged, each label sits above its line. */
+/* Section tabs in the header band: click to jump to the section's first slide. */
+#stage section .tab { position: relative; cursor: pointer; }
+#stage section .tab::after { content: ''; position: absolute; top: 0; bottom: 0; left: -28px; right: -28px; }
+#stage section .tab:hover { color: #111111 !important; }
+#stage section .scene.rows.stack { gap: 16px !important; }
+#stage section .scene.rows.stack > div { flex-direction: column !important; align-items: flex-start !important; gap: 0 !important; }
+#stage section .scene.rows.stack > div > p:first-child { width: auto !important; }
+/* A copy of the figure above the block (here: the two hierarchies), shown on top while enlarged. */
+#stage section .scene.rows.stack > div.lead-clone { gap: 8px !important; padding: 0 0 6px 0; }
+#stage section .lead-clone .lead-row { display: flex; flex-direction: column; gap: 2px; }
+#stage section .lead-clone .lead-label { display: flex; flex-direction: row !important; align-items: baseline; gap: 16px; width: auto !important; }
+#stage section .lead-clone .lead-bars { display: flex; flex-direction: row; align-items: center; }
+@media (prefers-reduced-motion: reduce) { #stage section, #stage section .scene { transition: none; } }
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage" aria-live="polite"><button id="prev" class="nav" type="button" aria-label="前のスライド"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8"/></svg></span></button><button id="next" class="nav" type="button" aria-label="次のスライド"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8"/></svg></span></button></div></div>
+<div id="msg">スライドを読み込んでいます…</div>
+<div id="bar">
+  <span id="count">– / –</span>
+  <span id="title"></span>
+  <span id="hint">← → キー、またはスライド左右の端の矢印で移動</span>
+  <button id="btn-full" type="button">全画面</button>
+</div>
+<script>
+(function () {
+  'use strict';
+  var stage = document.getElementById('stage');
+  var viewport = document.getElementById('viewport');
+  var msg = document.getElementById('msg');
+  var slides = [];
+  var cur = 0;
+  // The offline copy carries the slides and pictures inside the page (a block with id "deck-data").
+  var DATA = null;
+  try { var dataEl = document.getElementById('deck-data'); if (dataEl) DATA = JSON.parse(dataEl.textContent); } catch (e) { DATA = null; }
+  // ?embed: shown inside the presenter view (no bar, no arrows). ?solo: does not follow other windows.
+  var query = new URLSearchParams(location.search);
+  if (query.has('embed')) document.documentElement.classList.add('embed');
+  if (query.has('solo')) document.documentElement.classList.add('solo');
+  // Windows of this deck that are open in the same browser stay on the same slide and the same enlarged block.
+  var chan = null;
+  try { if (!query.has('solo') && 'BroadcastChannel' in window) chan = new BroadcastChannel('lsj173-deck'); } catch (e) { chan = null; }
+  var readyAt = Infinity;
+  function post(m) { if (chan) { try { chan.postMessage(m); } catch (e) { /* ignore */ } } }
+  if (chan) {
+    chan.onmessage = function (e) {
+      var m = e.data || {};
+      if (!slides.length) return;
+      if (m.t === 'slide' || m.t === 'goto') { if (m.i !== cur) show(m.i, true, true); }
+      // A window that has just opened asks where the others are. Only windows that were already open answer,
+      // so two windows opening at the same moment cannot pull each other to the wrong slide.
+      else if (m.t === 'ask') { if (readyAt < (m.ts || 0)) post({ t: 'slide', i: cur }); }
+      else if (m.t === 'zoom') {
+        var sec = slides[m.i];
+        var box = sec ? sec.querySelectorAll('.scene')[m.k] : null;
+        if (!box) return;
+        if (m.on) zoomIn(box, sec, true); else zoomOut(box, true);
+      }
+    };
+  }
+  // Slides whose pictures are maps, not scenes: no hover zoom there.
+  var NO_ZOOM = { cover: 1, sursurunga: 1, abruzzese: 1, operational: 1 };
+  // Slides whose gray boxes are statements or figures, not example cards.
+  var NO_CARD = { claim: 1, cross: 1, questions: 1, operational: 1 };
+  // Slides where only the last gray card enlarges.
+  var LAST_CARD = { typology: 1 };
+  var GRAY = /background(-color)?\s*:\s*#f3f3f3/i;
+  // Slides whose wide card is re-stacked while enlarged (see .stack).
+  var STACK = { selection: 1 };
+  // Other blocks that enlarge on hover: the block that holds the paragraph containing this text.
+  //   up: how many levels above that paragraph the block is; rows: re-stack its rows while enlarged.
+  var EXTRA = {
+    hierarchy: [{ key: 'Bagvalal', up: 2, rows: true, lead: true }]
+  };
+
+  function fit() {
+    var w = viewport.clientWidth, h = viewport.clientHeight;
+    var s = Math.min(w / 1920, h / 1080);
+    stage.style.transform = 'translate(' + Math.round((w - 1920 * s) / 2) + 'px,' + Math.round((h - 1080 * s) / 2) + 'px) scale(' + s + ')';
+  }
+
+  function prepare(sec) {
+    // Pictures are files of this page.
+    sec.querySelectorAll('img').forEach(function (img) {
+      var m = /\/_blob\/([0-9a-f]+)/.exec(img.getAttribute('src') || '');
+      if (m) img.setAttribute('src', 'img/' + m[1] + '.png');
+      var src = img.getAttribute('src');
+      if (DATA && DATA.images && DATA.images[src]) img.setAttribute('src', DATA.images[src]);
+      img.setAttribute('draggable', 'false');
+    });
+    // Arrow connectors: a line with a head, as thick as its border-width.
+    sec.querySelectorAll('x-connector').forEach(function (c) {
+      var st = c.getAttribute('style') || '';
+      var m = /border-width\s*:\s*([\d.]+)px/.exec(st);
+      var t = m ? parseFloat(m[1]) : 2;
+      c.style.borderWidth = '0';
+      c.style.height = t + 'px';
+      c.style.setProperty('--hh', (t * 2.2 + 3) + 'px');
+      c.style.setProperty('--hl', (t * 3 + 6) + 'px');
+    });
+    sec.removeAttribute('hidden');
+    // Scenes: the box that holds a picture together with its caption and line.
+    if (!NO_ZOOM[sec.id]) {
+      sec.querySelectorAll('img').forEach(function (img) {
+        var box = img.parentElement;
+        if (!box || box === sec || box.classList.contains('scene')) return;
+        if (box.querySelectorAll('p').length === 0) return;
+        box.classList.add('scene');
+      });
+    }
+    // Example cards: every gray box that holds an example (stimulus, gloss, form).
+    if (!NO_CARD[sec.id]) {
+      sec.querySelectorAll('div, p').forEach(function (el) {
+        var st = el.getAttribute('style') || '';
+        if (!GRAY.test(st)) return;
+        if (/position\s*:\s*absolute/.test(st) && /height\s*:\s*72px/.test(st)) return; // header band
+        if (el.closest('.scene') || el.closest('aside')) return;
+        if (!(el.textContent || '').trim()) return;
+        el.classList.add('scene', 'card');
+        if (STACK[sec.id]) el.classList.add('stackable');
+      });
+      if (LAST_CARD[sec.id]) {
+        var cards = sec.querySelectorAll('.scene.card');
+        for (var c = 0; c < cards.length - 1; c++) cards[c].classList.remove('scene', 'card');
+      }
+    }
+    (EXTRA[sec.id] || []).forEach(function (spec) {
+      var ps = sec.querySelectorAll('p');
+      for (var i = 0; i < ps.length; i++) {
+        if (ps[i].textContent.indexOf(spec.key) < 0 || ps[i].closest('aside')) continue;
+        var box = ps[i];
+        for (var k = 0; k < spec.up && box; k++) box = box.parentElement;
+        if (!box || box === sec || !sec.contains(box)) continue;
+        box.classList.add('scene');
+        if (spec.rows) box.classList.add('rows', 'stackable');
+        if (spec.lead) box._lead = box.previousElementSibling;
+        break;
+      }
+    });
+    if (sec.querySelector('.scene')) {
+      // The pointer is tested against each scene's place in the layout (not its
+      // enlarged picture), so moving to the neighbouring scene switches at once.
+      sec.addEventListener('mousemove', function (e) { hit(sec, e, false); });
+      sec.addEventListener('mouseleave', function () { sec.querySelectorAll('.scene.zoom').forEach(function (b) { zoomOut(b); }); });
+      sec.addEventListener('click', function (e) { hit(sec, e, true); });
+    }
+  }
+
+  function place(box, sec) {
+    var x = 0, y = 0, el = box;
+    while (el && el !== sec) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; }
+    return { x: x, y: y, w: box.offsetWidth, h: box.offsetHeight };
+  }
+
+  function hit(sec, e, toggle) {
+    var sr = stage.getBoundingClientRect();
+    var scale = sr.width / 1920 || 1;
+    var px = (e.clientX - sr.left) / scale, py = (e.clientY - sr.top) / scale;
+    var found = null;
+    sec.querySelectorAll('.scene').forEach(function (box) {
+      var r = place(box, sec);
+      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) found = box;
+    });
+    var open = sec.querySelector('.scene.zoom');
+    if (!found && open) {
+      var zr = open.getBoundingClientRect();
+      if (e.clientX >= zr.left && e.clientX <= zr.right && e.clientY >= zr.top && e.clientY <= zr.bottom) found = open;
+    }
+    if (toggle && found && found === open) { zoomOut(found); sec._tapOff = found; return; }
+    if (!toggle && sec._tapOff && sec._tapOff === found) return;
+    if (!found || sec._tapOff !== found) sec._tapOff = null;
+    if (found) { if (found !== open) zoomIn(found, sec); }
+    else if (open) zoomOut(open);
+  }
+
+  function zoomIn(box, sec, remote) {
+    sec.querySelectorAll('.scene.zoom').forEach(function (b) { if (b !== box) zoomOut(b, true); });
+    if (box.classList.contains('stackable')) box.classList.add('stack');
+    if (box._lead && !box.querySelector('.lead-clone')) box.insertBefore(leadClone(box._lead), box.firstChild);
+    var r = place(box, sec);
+    var x = r.x, y = r.y, w = r.w, h = r.h;
+    var z = Math.min(1.6, 960 / h);
+    var cx = x + w / 2, cy = y + h / 2;
+    var ox = cx < 1920 * 0.4 ? 'left' : (cx > 1920 * 0.6 ? 'right' : 'center');
+    var oy = cy < 1080 * 0.42 ? 'top' : (cy > 1080 * 0.6 ? 'bottom' : 'center');
+    var dx = 0;
+    if (w * z > 1840) {
+      // Too wide to grow as a whole: grow from the left, limited by where its content ends,
+      // and slide left into the margin when that buys more room.
+      var cw = contentWidth(box) + 36;
+      z = Math.min(z, 1880 / cw);
+      if (z < 1.1) z = 1.1;
+      ox = 'left';
+      if (x + cw * z > 1900) dx = Math.max(20 - x, 1900 - (x + cw * z));
+    }
+    else {
+      var left = ox === 'left' ? x : (ox === 'right' ? x + w - w * z : x + w / 2 - w * z / 2);
+      if (left + w * z > 1900) dx = 1900 - (left + w * z);
+      if (left + dx < 20) dx = 20 - left;
+    }
+    // Keep the enlarged box inside the slide vertically as well.
+    var top = oy === 'top' ? y : (oy === 'bottom' ? y + h - h * z : y + h / 2 - h * z / 2);
+    var dy = 0;
+    if (top + h * z > 1060) dy = 1060 - (top + h * z);
+    if (top + dy < 20) dy = 20 - top;
+    box.style.setProperty('--dx', dx.toFixed(1) + 'px');
+    box.style.setProperty('--dy', dy.toFixed(1) + 'px');
+    box.style.transformOrigin = ox + ' ' + oy;
+    box.style.setProperty('--zoom', z.toFixed(3));
+    box.classList.add('zoom');
+    stage.classList.add('zooming');
+    if (!remote) post({ t: 'zoom', on: true, i: slides.indexOf(sec), k: sceneIndex(box, sec) });
+  }
+  function sceneIndex(box, sec) { return Array.prototype.indexOf.call(sec.querySelectorAll('.scene'), box); }
+  function zoomOut(box, remote) {
+    if (!remote && box.classList.contains('zoom')) { var sec = box.closest('section'); post({ t: 'zoom', on: false, i: slides.indexOf(sec), k: sceneIndex(box, sec) }); }
+    box.classList.remove('zoom', 'stack');
+    var c = box.querySelector('.lead-clone');
+    if (c) c.remove();
+    if (!stage.querySelector('.scene.zoom')) stage.classList.remove('zooming');
+  }
+
+  // A compact copy of the figure above a block: each row becomes "label, then its bar(s)".
+  function leadClone(lead) {
+    var wrap = document.createElement('div');
+    wrap.className = 'lead-clone';
+    Array.prototype.forEach.call(lead.children, function (row) {
+      var kids = row.children;
+      if (kids.length >= 2 && kids[0].tagName === 'DIV') {
+        var r = document.createElement('div'); r.className = 'lead-row';
+        var label = kids[0].cloneNode(true); label.classList.add('lead-label');
+        var bars = document.createElement('div'); bars.className = 'lead-bars';
+        for (var i = 1; i < kids.length; i++) {
+          var k = kids[i].cloneNode(true);
+          if (k.tagName === 'DIV') k.style.height = '56px';
+          bars.appendChild(k);
+        }
+        r.appendChild(label); r.appendChild(bars); wrap.appendChild(r);
+      } else {
+        wrap.appendChild(row.cloneNode(true));
+      }
+    });
+    return wrap;
+  }
+
+  // How far right the text, pictures and painted shapes of a box reach, in slide pixels from its left edge.
+  function contentWidth(box) {
+    var scale = stage.getBoundingClientRect().width / 1920 || 1;
+    var left = box.getBoundingClientRect().left, right = left;
+    var walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null);
+    var range = document.createRange(), node;
+    while ((node = walker.nextNode())) {
+      if (!node.nodeValue.trim()) continue;
+      range.selectNodeContents(node);
+      var rects = range.getClientRects();
+      for (var i = 0; i < rects.length; i++) if (rects[i].right > right) right = rects[i].right;
+    }
+    box.querySelectorAll('img, svg').forEach(function (g) {
+      var r = g.getBoundingClientRect(); if (r.right > right) right = r.right;
+    });
+    box.querySelectorAll('*').forEach(function (e) {
+      if (e.firstElementChild) return;
+      var cs = getComputedStyle(e);
+      var painted = (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') || parseFloat(cs.borderTopWidth) > 0;
+      if (!painted) return;
+      var r = e.getBoundingClientRect(); if (r.width && r.right > right) right = r.right;
+    });
+    return (right - left) / scale;
+  }
+
+  // Header band: each section name jumps to the first slide of that section.
+  function band(sec) {
+    var kids = sec.children;
+    for (var i = 0; i < kids.length; i++) {
+      var st = kids[i].getAttribute('style') || '';
+      if (/position\s*:\s*absolute/.test(st) && /height\s*:\s*72px/.test(st)) return kids[i];
+    }
+    return null;
+  }
+  function tabKey(p) { return p.textContent.replace(/\s+/g, ' ').trim(); }
+  function linkTabs() {
+    var first = {};
+    slides.forEach(function (sec, i) {
+      var b = band(sec); if (!b) return;
+      b.querySelectorAll('p').forEach(function (p) {
+        if (!/font-weight\s*:\s*700/.test(p.getAttribute('style') || '')) return;
+        var key = tabKey(p);
+        if (!(key in first)) first[key] = i;
+      });
+    });
+    slides.forEach(function (sec) {
+      var b = band(sec); if (!b) return;
+      b.querySelectorAll('p').forEach(function (p) {
+        var key = tabKey(p);
+        if (!(key in first)) return;
+        p.classList.add('tab');
+        p.setAttribute('role', 'link');
+        p.addEventListener('click', function (e) { e.stopPropagation(); show(first[key]); });
+      });
+    });
+  }
+
+  function show(i, replace, silent) {
+    if (!slides.length) return;
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (s, k) {
+      s.classList.toggle('current', k === cur);
+      if (k !== cur) s.querySelectorAll('.scene.zoom').forEach(function (b) { zoomOut(b, true); });
+    });
+    document.getElementById('count').textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+    var h = slides[cur].querySelector('h1, h2');
+    document.getElementById('title').textContent = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
+    var hash = '#slide-' + (cur + 1);
+    if (location.hash !== hash) {
+      try { if (replace) history.replaceState(null, '', hash); else location.hash = hash; } catch (e) { /* ignore */ }
+    }
+    if (!silent) post({ t: 'slide', i: cur });
+  }
+  function fromHash() {
+    var m = /^#slide-(\d+)$/.exec(location.hash || '');
+    return m ? parseInt(m[1], 10) - 1 : 0;
+  }
+
+  function fetchParts() {
+    return fetch('project/deck.json', { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error('deck.json ' + r.status);
+      return r.json();
+    }).then(function (deck) {
+      var order = deck.order || [];
+      return Promise.all(order.map(function (id) {
+        return fetch('project/slides/' + id + '.html', { cache: 'no-cache' }).then(function (r) {
+          if (!r.ok) throw new Error(id + ' ' + r.status);
+          return r.text();
+        });
+      }));
+    });
+  }
+  function load() {
+    var parts = DATA ? Promise.resolve(DATA.order.map(function (id) { return DATA.slides[id] || ''; })) : fetchParts();
+    parts.then(function (parts) {
+      var tmp = document.createElement('div');
+      parts.forEach(function (html) {
+        tmp.innerHTML = html;
+        var sec = tmp.querySelector('section');
+        if (!sec) return;
+        tmp.querySelectorAll('script').forEach(function (s) { s.remove(); });
+        prepare(sec);
+        stage.appendChild(sec);
+        slides.push(sec);
+      });
+      if (!slides.length) throw new Error('no slides');
+      linkTabs();
+      msg.style.display = 'none';
+      fit();
+      show(fromHash(), true, true);
+      readyAt = Date.now();
+      post({ t: 'ask', ts: readyAt });
+    }).catch(function (err) {
+      msg.textContent = 'スライドを読み込めませんでした（' + err.message + '）。';
+    });
+  }
+
+  document.getElementById('prev').addEventListener('click', function () { this.blur(); show(cur - 1); });
+  document.getElementById('next').addEventListener('click', function () { this.blur(); show(cur + 1); });
+  document.getElementById('btn-full').addEventListener('click', function () {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(function () {});
+    } catch (e) { /* not allowed here */ }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { show(cur + 1); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { show(cur - 1); e.preventDefault(); }
+    else if (k === 'Home') { show(0); e.preventDefault(); }
+    else if (k === 'End') { show(slides.length - 1); e.preventDefault(); }
+    // P: open the presenter view (notes, next slide, timer) in another window.
+    else if ((k === 'p' || k === 'P') && !query.has('embed') && location.protocol !== 'file:') { window.open('presenter.html?t=' + Date.now() + '#slide-' + (cur + 1), 'lsj173-presenter'); }
+  });
+  window.addEventListener('hashchange', function () { var i = fromHash(); if (i !== cur) show(i, true); });
+  window.addEventListener('resize', fit);
+  fit();
+  load();
+})();
+</script>
+</body>
+</html>

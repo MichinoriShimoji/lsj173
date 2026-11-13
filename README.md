@@ -8,8 +8,10 @@
 
 ## 構成
 
-- `index.html` … 表示用のページ（スライドを読み込んで 1920×1080 で表示）
+- `index.html` … 聴衆用スライド。スライド・画像・フォントを1ファイルに収めたもの（保存すればネットなしでも開ける）。`tools/build_single_file.py` で下の材料から作る
+- `viewer.html` … 表示プログラム本体（スライドのファイルを読み込んで 1920×1080 で表示）。発表者ビューが使う
 - `presenter.html` … 発表者ビュー。「聴衆用ウィンドウを開く」で開いたスライドと連動する
 - `project/deck.json` … スライドの並び順
 - `project/slides/*.html` … スライド1枚ごとの内容
 - `img/` … スライドで使う画像
+- `tools/build_single_file.py` … `index.html` を作るスクリプト
