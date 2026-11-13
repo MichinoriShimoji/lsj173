@@ -45,6 +45,9 @@ body.notes-on #notes { display: block; }
 #stage section .scene { position: relative; transition: transform .2s ease, box-shadow .2s ease; }
 #stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: scale(var(--zoom, 1.45)); pointer-events: none; }
 #stage section .scene.card.zoom { background-color: #f3f3f3; border-radius: 10px; box-shadow: 0 0 0 6px #fff, 0 14px 60px 10px rgba(0,0,0,.34); }
+/* A wide one-row card whose parts are stacked while enlarged, so it can grow more. */
+#stage section .scene.card.stack { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+#stage section .scene.card.stack div { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
 @media (prefers-reduced-motion: reduce) { #stage section, #stage section .scene { transition: none; } }
 </style>
 </head>
@@ -75,6 +78,8 @@ body.notes-on #notes { display: block; }
   // Slides whose gray boxes are statements or figures, not example cards.
   var NO_CARD = { claim: 1, cross: 1, typology: 1, questions: 1 };
   var GRAY = /background(-color)?\s*:\s*#f3f3f3/i;
+  // Slides whose wide card is re-stacked while enlarged (see .stack).
+  var STACK = { selection: 1 };
 
   function fit() {
     var w = viewport.clientWidth, h = viewport.clientHeight;
@@ -118,6 +123,7 @@ body.notes-on #notes { display: block; }
         if (el.closest('.scene') || el.closest('aside')) return;
         if (!(el.textContent || '').trim()) return;
         el.classList.add('scene', 'card');
+        if (STACK[sec.id]) el.classList.add('stackable');
       });
     }
     if (sec.querySelector('.scene')) {
@@ -154,6 +160,7 @@ body.notes-on #notes { display: block; }
 
   function zoomIn(box, sec) {
     sec.querySelectorAll('.scene.zoom').forEach(function (b) { if (b !== box) zoomOut(b); });
+    if (box.classList.contains('stackable')) box.classList.add('stack');
     var r = place(box, sec);
     var x = r.x, y = r.y, w = r.w, h = r.h;
     var z = Math.min(1.6, 960 / h);
@@ -171,7 +178,7 @@ body.notes-on #notes { display: block; }
     box.style.setProperty('--zoom', z.toFixed(3));
     box.classList.add('zoom');
   }
-  function zoomOut(box) { box.classList.remove('zoom'); }
+  function zoomOut(box) { box.classList.remove('zoom', 'stack'); }
 
   // How far right the text and pictures of a box reach, in slide pixels from its left edge.
   function textWidth(box) {
