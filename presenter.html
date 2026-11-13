@@ -15,7 +15,10 @@ html, body { height: 100%; margin: 0; background: #161616; color: #ececec; font-
 #cur-frame { max-height: 56vh; }
 #next-frame iframe { pointer-events: none; }
 #next-end { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: #9a9a9a; font-size: 15px; background: #222; }
-#notes { flex: 1 1 auto; min-height: 0; overflow: auto; box-sizing: border-box; padding: 16px 20px; background: #222; border: 1px solid #333; border-radius: 8px; font-size: 22px; line-height: 1.8; white-space: pre-wrap; }
+#notes { flex: 1 1 auto; min-height: 0; overflow: auto; box-sizing: border-box; width: 100%; margin: 0; padding: 16px 20px; background: #222; color: #ececec; border: 1px solid #333; border-radius: 8px; font: inherit; font-size: 22px; line-height: 1.8; white-space: pre-wrap; resize: none; outline: none; }
+#notes.editing { background: #fff; color: #111; border-color: #7aa2ff; }
+#notes-state { font-size: 13px; color: #9a9a9a; }
+#file { display: none; }
 #notes-head { display: flex; align-items: center; gap: 8px; }
 #notes-head .label { flex: 1; }
 .panel { background: #222; border: 1px solid #333; border-radius: 8px; padding: 14px 16px; }
@@ -39,11 +42,16 @@ button.main:hover { background: #fff; }
   <div class="col">
     <div class="frame" id="cur-frame"><iframe id="cur" title="現在のスライド"></iframe></div>
     <div id="notes-head">
-      <span class="label">ノート</span>
+      <span class="label">ノート　<span id="notes-state"></span></span>
+      <button id="edit" type="button">編集</button>
+      <button id="revert" type="button" hidden>元に戻す</button>
+      <button id="export" type="button">書き出し</button>
+      <button id="import" type="button">読み込み</button>
+      <input id="file" type="file" accept=".json,application/json">
       <button id="smaller" type="button" aria-label="ノートの文字を小さく">A−</button>
       <button id="larger" type="button" aria-label="ノートの文字を大きく">A＋</button>
     </div>
-    <div id="notes" tabindex="0"></div>
+    <textarea id="notes" readonly spellcheck="false" aria-label="ノート"></textarea>
   </div>
   <div class="col">
     <span class="label">次のスライド</span>
@@ -69,6 +77,7 @@ button.main:hover { background: #fff; }
       <li>プロジェクタを「拡張ディスプレイ」としてつなぐ</li>
       <li>「聴衆用ウィンドウを開く」→ そのウィンドウをプロジェクタ側へ移し、「全画面」を押す</li>
       <li>このウィンドウで ← → を押すと、両方が一緒に進む。上のスライドでのホバー拡大も聴衆側に出る</li>
+      <li>ノートは「編集」で書き換えられる（このブラウザの中だけに保存。Esc で編集を終える）</li>
     </ol>
   </div>
 </div>
@@ -76,7 +85,10 @@ button.main:hover { background: #fff; }
 <script>
 (function () {
   'use strict';
-  var notes = [], titles = [];
+  var notes = [], titles = [], ids = [];
+  // Edited notes are kept in this browser only, by slide id; they replace the published text here.
+  var edits = {}, editing = false;
+  try { edits = JSON.parse(localStorage.getItem('lsj173-notes') || '{}') || {}; } catch (e) { edits = {}; }
   var cur = 0, ready = false, readyAt = 0;
   var curFrame = document.getElementById('cur');
   var nextFrame = document.getElementById('next');
@@ -105,7 +117,7 @@ button.main:hover { background: #fff; }
     if (!ready) return;
     var before = cur;
     cur = Math.max(0, Math.min(notes.length - 1, i));
-    notesBox.textContent = notes[cur] || '（このスライドにノートはありません）';
+    paintNote();
     notesBox.scrollTop = 0;
     document.getElementById('count').textContent = (cur + 1) + ' / ' + notes.length;
     document.getElementById('title').textContent = titles[cur] || '';
@@ -115,6 +127,66 @@ button.main:hover { background: #fff; }
     // The clock starts with the first move forward (not with the jump that syncs this view just after loading).
     if (cur > before && !started && !elapsed && Date.now() - readyAt > 2000) startTimer();
   }
+  function noteOf(i) { return typeof edits[ids[i]] === 'string' ? edits[ids[i]] : (notes[i] || ''); }
+  function paintNote() {
+    var edited = typeof edits[ids[cur]] === 'string';
+    notesBox.value = noteOf(cur);
+    notesBox.placeholder = editing ? 'ここにノートを書く' : '（このスライドにノートはありません）';
+    document.getElementById('notes-state').textContent = edited ? '編集済み（このブラウザに保存）' : '';
+    document.getElementById('revert').hidden = !(editing && edited);
+  }
+  function store() {
+    try { localStorage.setItem('lsj173-notes', JSON.stringify(edits)); return true; }
+    catch (e) { document.getElementById('notes-state').textContent = 'このブラウザには保存できません'; return false; }
+  }
+  function setEditing(on) {
+    editing = on;
+    notesBox.readOnly = !on;
+    notesBox.classList.toggle('editing', on);
+    document.getElementById('edit').textContent = on ? '完了' : '編集';
+    paintNote();
+    if (on) notesBox.focus(); else notesBox.blur();
+  }
+  notesBox.addEventListener('input', function () {
+    if (!editing) return;
+    if (notesBox.value === (notes[cur] || '')) delete edits[ids[cur]]; else edits[ids[cur]] = notesBox.value;
+    var ok = store();
+    var edited = typeof edits[ids[cur]] === 'string';
+    if (ok) document.getElementById('notes-state').textContent = edited ? '編集済み（このブラウザに保存）' : '';
+    document.getElementById('revert').hidden = !edited;
+  });
+  document.getElementById('edit').addEventListener('click', function () { setEditing(!editing); });
+  document.getElementById('revert').addEventListener('click', function () { delete edits[ids[cur]]; store(); paintNote(); notesBox.focus(); });
+  document.getElementById('export').addEventListener('click', function () {
+    this.blur();
+    var out = { deck: 'lsj173', exported: new Date().toISOString(), notes: {} };
+    ids.forEach(function (id, i) { out.notes[id] = noteOf(i); });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
+    a.download = 'lsj173-notes.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  });
+  document.getElementById('import').addEventListener('click', function () { this.blur(); document.getElementById('file').click(); });
+  document.getElementById('file').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    var input = this;
+    if (!f) return;
+    f.text().then(function (t) {
+      var data = JSON.parse(t);
+      var src = data && data.notes ? data.notes : data;
+      var n = 0;
+      ids.forEach(function (id, i) {
+        if (typeof src[id] !== 'string') return;
+        if (src[id] === (notes[i] || '')) delete edits[id]; else { edits[id] = src[id]; n++; }
+      });
+      store(); paintNote();
+      document.getElementById('notes-state').textContent = '読み込みました（編集済み ' + n + ' 枚）';
+    }).catch(function () {
+      document.getElementById('notes-state').textContent = '読み込めませんでした（書き出したファイルを選んでください）';
+    }).then(function () { input.value = ''; });
+  });
+
   if (chan) {
     chan.onmessage = function (e) {
       var m = e.data || {};
@@ -163,6 +235,7 @@ button.main:hover { background: #fff; }
   document.getElementById('smaller').addEventListener('click', function () { this.blur(); setSize(size - 2); });
   document.getElementById('larger').addEventListener('click', function () { this.blur(); setSize(size + 2); });
   document.addEventListener('keydown', function (e) {
+    if (editing) { if (e.key === 'Escape') { setEditing(false); e.preventDefault(); } return; }   // typing, not presenting
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     var k = e.key;
     if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { set(cur + 1); e.preventDefault(); }
@@ -176,7 +249,8 @@ button.main:hover { background: #fff; }
     if (!r.ok) throw new Error('deck.json ' + r.status);
     return r.json();
   }).then(function (deck) {
-    return Promise.all((deck.order || []).map(function (id) {
+    ids = deck.order || [];
+    return Promise.all(ids.map(function (id) {
       return fetch('project/slides/' + id + '.html').then(function (r) {
         if (!r.ok) throw new Error(id + ' ' + r.status);
         return r.text();
