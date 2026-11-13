@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>代名詞複数と仲間性：北琉球今帰仁謝名方言の包括代名詞（HTML版）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Charis+SIL:ital,wght@0,400;0,700;1,400;1,700&display=swap">
+<style>
+/* ---------- viewer shell ---------- */
+html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-family: 'Noto Sans JP', Arial, sans-serif; overflow: hidden; }
+#viewport { position: fixed; inset: 0 0 44px 0; overflow: hidden; }
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #fff; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
+#bar { position: fixed; left: 0; right: 0; bottom: 0; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box; background: #111; font-size: 14px; user-select: none; }
+#bar button { font: inherit; color: #e8e8e8; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; padding: 4px 12px; cursor: pointer; }
+#bar button:hover { background: #3a3a3a; }
+#bar button:focus-visible { outline: 2px solid #7aa2ff; outline-offset: 1px; }
+#count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+#title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #aaa; padding: 0 8px; }
+#hint { color: #888; white-space: nowrap; }
+#notes { position: fixed; left: 0; right: 0; bottom: 44px; max-height: 32%; overflow: auto; box-sizing: border-box; padding: 14px 20px; background: rgba(17,17,17,.96); border-top: 1px solid #444; font-size: 16px; line-height: 1.7; display: none; }
+body.notes-on #notes { display: block; }
+#msg { position: fixed; inset: 0 0 44px 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 16px; line-height: 1.8; color: #ccc; }
+@media (max-width: 720px) { #hint, #title { display: none; } }
+
+/* ---------- slide rendering (same rules as the slide format) ---------- */
+#stage section { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; box-sizing: border-box; overflow: hidden; font-family: 'Noto Sans JP', Arial, sans-serif; font-size: 32px; line-height: 1.4; color: #111; background: #fff; opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; }
+#stage section.current { opacity: 1; visibility: visible; transition: opacity .25s ease; z-index: 2; }
+#stage section *, #stage section *::before, #stage section *::after { box-sizing: border-box; }
+#stage section :is(p, h1, h2, h3, hr, ul, ol, figure) { margin: 0; }
+#stage section p { line-height: 1.4; }
+#stage section h1 { font-size: 96px; font-weight: 600; line-height: 1.1; }
+#stage section h2 { font-size: 64px; font-weight: 600; line-height: 1.15; }
+#stage section h3 { font-size: 44px; font-weight: 600; line-height: 1.2; }
+#stage section div:not([style*="display"]) { display: flex; flex-direction: column; }
+#stage section img { display: block; flex: none; max-width: none; }
+#stage section svg { display: block; flex: none; }
+#stage section hr { border: 0; align-self: stretch; flex: none; }
+#stage section x-shape { display: block; }
+#stage section x-connector { display: block; position: relative; flex: none; background: currentColor; }
+#stage section x-connector::after { content: ""; position: absolute; right: -2px; top: 50%; border-style: solid; border-color: transparent transparent transparent currentColor; transform: translateY(-50%); border-width: var(--hh) 0 var(--hh) var(--hl); }
+#stage section aside { display: none; }
+
+/* ---------- hover: enlarge a scene (picture + caption + line) ---------- */
+#stage section .scene { position: relative; transition: transform .2s ease, box-shadow .2s ease; }
+#stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: scale(var(--zoom, 1.45)); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #stage section, #stage section .scene { transition: none; } }
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage" aria-live="polite"></div></div>
+<div id="msg">スライドを読み込んでいます…</div>
+<div id="notes" aria-label="発表者ノート"></div>
+<div id="bar">
+  <button id="prev" type="button" aria-label="前のスライド">◀</button>
+  <span id="count">– / –</span>
+  <button id="next" type="button" aria-label="次のスライド">▶</button>
+  <span id="title"></span>
+  <span id="hint">← → で移動　N でノート</span>
+  <button id="btn-notes" type="button">ノート</button>
+  <button id="btn-full" type="button">全画面</button>
+</div>
+<script>
+(function () {
+  'use strict';
+  var stage = document.getElementById('stage');
+  var viewport = document.getElementById('viewport');
+  var msg = document.getElementById('msg');
+  var notesBox = document.getElementById('notes');
+  var slides = [];
+  var cur = 0;
+  // Slides whose pictures are maps, not scenes: no hover zoom there.
+  var NO_ZOOM = { cover: 1, sursurunga: 1, abruzzese: 1 };
+
+  function fit() {
+    var w = viewport.clientWidth, h = viewport.clientHeight;
+    var s = Math.min(w / 1920, h / 1080);
+    stage.style.transform = 'translate(' + Math.round((w - 1920 * s) / 2) + 'px,' + Math.round((h - 1080 * s) / 2) + 'px) scale(' + s + ')';
+  }
+
+  function prepare(sec) {
+    // Pictures are files of this page.
+    sec.querySelectorAll('img').forEach(function (img) {
+      var m = /\/_blob\/([0-9a-f]+)/.exec(img.getAttribute('src') || '');
+      if (m) img.setAttribute('src', 'img/' + m[1] + '.png');
+      img.setAttribute('draggable', 'false');
+    });
+    // Arrow connectors: a line with a head, as thick as its border-width.
+    sec.querySelectorAll('x-connector').forEach(function (c) {
+      var st = c.getAttribute('style') || '';
+      var m = /border-width\s*:\s*([\d.]+)px/.exec(st);
+      var t = m ? parseFloat(m[1]) : 2;
+      c.style.borderWidth = '0';
+      c.style.height = t + 'px';
+      c.style.setProperty('--hh', (t * 2.2 + 3) + 'px');
+      c.style.setProperty('--hl', (t * 3 + 6) + 'px');
+    });
+    sec.removeAttribute('hidden');
+    // Scenes: the box that holds a picture together with its caption and line.
+    if (!NO_ZOOM[sec.id]) {
+      sec.querySelectorAll('img').forEach(function (img) {
+        var box = img.parentElement;
+        if (!box || box === sec || box.classList.contains('scene')) return;
+        if (box.querySelectorAll('p').length === 0) return;
+        box.classList.add('scene');
+      });
+      // The pointer is tested against each scene's place in the layout (not its
+      // enlarged picture), so moving to the neighbouring scene switches at once.
+      sec.addEventListener('mousemove', function (e) { hit(sec, e, false); });
+      sec.addEventListener('mouseleave', function () { sec.querySelectorAll('.scene.zoom').forEach(zoomOut); });
+      sec.addEventListener('click', function (e) { hit(sec, e, true); });
+    }
+  }
+
+  function place(box, sec) {
+    var x = 0, y = 0, el = box;
+    while (el && el !== sec) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; }
+    return { x: x, y: y, w: box.offsetWidth, h: box.offsetHeight };
+  }
+
+  function hit(sec, e, toggle) {
+    var sr = stage.getBoundingClientRect();
+    var scale = sr.width / 1920 || 1;
+    var px = (e.clientX - sr.left) / scale, py = (e.clientY - sr.top) / scale;
+    var found = null;
+    sec.querySelectorAll('.scene').forEach(function (box) {
+      var r = place(box, sec);
+      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) found = box;
+    });
+    var open = sec.querySelector('.scene.zoom');
+    if (toggle && found && found === open) { zoomOut(found); sec._tapOff = found; return; }
+    if (!toggle && sec._tapOff && sec._tapOff === found) return;
+    if (!found || sec._tapOff !== found) sec._tapOff = null;
+    if (found) { if (found !== open) zoomIn(found, sec); }
+    else if (open) zoomOut(open);
+  }
+
+  function zoomIn(box, sec) {
+    sec.querySelectorAll('.scene.zoom').forEach(function (b) { if (b !== box) zoomOut(b); });
+    var r = place(box, sec);
+    var x = r.x, y = r.y, w = r.w, h = r.h;
+    var z = Math.min(1.6, 1800 / w, 960 / h);
+    if (z < 1.08) z = 1.08;
+    var cx = x + w / 2, cy = y + h / 2;
+    var ox = cx < 1920 * 0.4 ? 'left' : (cx > 1920 * 0.6 ? 'right' : 'center');
+    var oy = cy < 1080 * 0.42 ? 'top' : (cy > 1080 * 0.6 ? 'bottom' : 'center');
+    box.style.transformOrigin = ox + ' ' + oy;
+    box.style.setProperty('--zoom', z.toFixed(3));
+    box.classList.add('zoom');
+  }
+  function zoomOut(box) { box.classList.remove('zoom'); }
+
+  function show(i, replace) {
+    if (!slides.length) return;
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (s, k) {
+      s.classList.toggle('current', k === cur);
+      if (k !== cur) s.querySelectorAll('.scene.zoom').forEach(zoomOut);
+    });
+    document.getElementById('count').textContent = (cur + 1) + ' / ' + slides.length;
+    var h = slides[cur].querySelector('h1, h2');
+    document.getElementById('title').textContent = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
+    var a = slides[cur].querySelector('aside');
+    notesBox.textContent = a ? a.textContent.trim() : '（このスライドにノートはありません）';
+    var hash = '#slide-' + (cur + 1);
+    if (location.hash !== hash) {
+      try { if (replace) history.replaceState(null, '', hash); else location.hash = hash; } catch (e) { /* ignore */ }
+    }
+  }
+  function fromHash() {
+    var m = /^#slide-(\d+)$/.exec(location.hash || '');
+    return m ? parseInt(m[1], 10) - 1 : 0;
+  }
+
+  function load() {
+    fetch('project/deck.json').then(function (r) {
+      if (!r.ok) throw new Error('deck.json ' + r.status);
+      return r.json();
+    }).then(function (deck) {
+      var order = deck.order || [];
+      return Promise.all(order.map(function (id) {
+        return fetch('project/slides/' + id + '.html').then(function (r) {
+          if (!r.ok) throw new Error(id + ' ' + r.status);
+          return r.text();
+        });
+      }));
+    }).then(function (parts) {
+      var tmp = document.createElement('div');
+      parts.forEach(function (html) {
+        tmp.innerHTML = html;
+        var sec = tmp.querySelector('section');
+        if (!sec) return;
+        tmp.querySelectorAll('script').forEach(function (s) { s.remove(); });
+        prepare(sec);
+        stage.appendChild(sec);
+        slides.push(sec);
+      });
+      if (!slides.length) throw new Error('no slides');
+      msg.style.display = 'none';
+      fit();
+      show(fromHash(), true);
+    }).catch(function (err) {
+      msg.textContent = 'スライドを読み込めませんでした（' + err.message + '）。';
+    });
+  }
+
+  document.getElementById('prev').addEventListener('click', function () { show(cur - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(cur + 1); });
+  document.getElementById('btn-notes').addEventListener('click', function () { document.body.classList.toggle('notes-on'); });
+  document.getElementById('btn-full').addEventListener('click', function () {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(function () {});
+    } catch (e) { /* not allowed here */ }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { show(cur + 1); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { show(cur - 1); e.preventDefault(); }
+    else if (k === 'Home') { show(0); e.preventDefault(); }
+    else if (k === 'End') { show(slides.length - 1); e.preventDefault(); }
+    else if (k === 'n' || k === 'N') { document.body.classList.toggle('notes-on'); }
+  });
+  window.addEventListener('hashchange', function () { var i = fromHash(); if (i !== cur) show(i, true); });
+  window.addEventListener('resize', fit);
+  fit();
+  load();
+})();
+</script>
+</body>
+</html>

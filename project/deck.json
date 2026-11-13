@@ -1,0 +1,67 @@
+{
+ "v": 4,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-11T08:45:00Z"
+ },
+ "lists": "css",
+ "title": "代名詞複数と仲間性：北琉球今帰仁謝名方言の包括代名詞",
+ "cover": "cover",
+ "order": [
+  "cover",
+  "plural-types",
+  "watashitachi",
+  "claim",
+  "sursurunga",
+  "abruzzese",
+  "jana-pronouns",
+  "selection",
+  "evacuation",
+  "cond1-election",
+  "cond1-contrast",
+  "cond2-hostility",
+  "cond2-separate",
+  "spatial",
+  "operational",
+  "hierarchy",
+  "bond",
+  "space",
+  "cross",
+  "typology",
+  "questions",
+  "references"
+ ],
+ "sections": {
+  "s1": {
+   "description": "問題設定：PPL は仲間性に制約されないのかを問う。",
+   "start": "cover"
+  },
+  "s2": {
+   "description": "仲間性に制約される PPL の先行報告（Sursurunga・Abruzzese）。",
+   "start": "sursurunga"
+  },
+  "s3": {
+   "description": "謝名方言の包括代名詞 agamii の使用条件を示す。",
+   "start": "jana-pronouns"
+  },
+  "s4": {
+   "description": "APL 研究と接続し、仲間性を操作的に定義し直す。",
+   "start": "operational"
+  },
+  "s5": {
+   "description": "四分類による類型的貢献：仲間性の新しい類型論に向けて。",
+   "start": "typology"
+  }
+ },
+ "faces": {
+  "noto-sans-jp": {
+   "family": "Noto Sans JP",
+   "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap"
+  },
+  "charis-sil": {
+   "family": "Charis SIL",
+   "href": "https://fonts.googleapis.com/css2?family=Charis+SIL:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+  }
+ },
+ "designSystems": []
+}
