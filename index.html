@@ -43,7 +43,7 @@ body.notes-on #notes { display: block; }
 
 /* ---------- hover: enlarge a scene (picture + caption + line) ---------- */
 #stage section .scene { position: relative; transition: transform .2s ease, box-shadow .2s ease; }
-#stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: translateX(var(--dx, 0px)) scale(var(--zoom, 1.45)); pointer-events: none; }
+#stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--zoom, 1.45)); pointer-events: none; }
 #stage section .scene.card.zoom { background-color: #f3f3f3; border-radius: 10px; box-shadow: 0 0 0 6px #fff, 0 14px 60px 10px rgba(0,0,0,.34); }
 /* A wide one-row card whose parts are stacked while enlarged, so it can grow more. */
 #stage section .scene.card.stack { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
@@ -52,6 +52,11 @@ body.notes-on #notes { display: block; }
 #stage section .scene.rows.stack { gap: 16px !important; }
 #stage section .scene.rows.stack > div { flex-direction: column !important; align-items: flex-start !important; gap: 0 !important; }
 #stage section .scene.rows.stack > div > p:first-child { width: auto !important; }
+/* A copy of the figure above the block (here: the two hierarchies), shown on top while enlarged. */
+#stage section .scene.rows.stack > div.lead-clone { gap: 8px !important; padding: 0 0 6px 0; }
+#stage section .lead-clone .lead-row { display: flex; flex-direction: column; gap: 2px; }
+#stage section .lead-clone .lead-label { display: flex; flex-direction: row !important; align-items: baseline; gap: 16px; width: auto !important; }
+#stage section .lead-clone .lead-bars { display: flex; flex-direction: row; align-items: center; }
 @media (prefers-reduced-motion: reduce) { #stage section, #stage section .scene { transition: none; } }
 </style>
 </head>
@@ -88,7 +93,7 @@ body.notes-on #notes { display: block; }
   //   up: how many levels above that paragraph the block is; rows: re-stack its rows while enlarged.
   var EXTRA = {
     operational: [{ key: '3つの変数', up: 1 }, { key: '16条件の分布図', up: 1 }],
-    hierarchy: [{ key: 'Bagvalal', up: 2, rows: true }]
+    hierarchy: [{ key: 'Bagvalal', up: 2, rows: true, lead: true }]
   };
 
   function fit() {
@@ -145,6 +150,7 @@ body.notes-on #notes { display: block; }
         if (!box || box === sec || !sec.contains(box)) continue;
         box.classList.add('scene');
         if (spec.rows) box.classList.add('rows', 'stackable');
+        if (spec.lead) box._lead = box.previousElementSibling;
         break;
       }
     });
@@ -173,6 +179,10 @@ body.notes-on #notes { display: block; }
       if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) found = box;
     });
     var open = sec.querySelector('.scene.zoom');
+    if (!found && open) {
+      var zr = open.getBoundingClientRect();
+      if (e.clientX >= zr.left && e.clientX <= zr.right && e.clientY >= zr.top && e.clientY <= zr.bottom) found = open;
+    }
     if (toggle && found && found === open) { zoomOut(found); sec._tapOff = found; return; }
     if (!toggle && sec._tapOff && sec._tapOff === found) return;
     if (!found || sec._tapOff !== found) sec._tapOff = null;
@@ -183,11 +193,13 @@ body.notes-on #notes { display: block; }
   function zoomIn(box, sec) {
     sec.querySelectorAll('.scene.zoom').forEach(function (b) { if (b !== box) zoomOut(b); });
     if (box.classList.contains('stackable')) box.classList.add('stack');
+    if (box._lead && !box.querySelector('.lead-clone')) box.insertBefore(leadClone(box._lead), box.firstChild);
     var r = place(box, sec);
     var x = r.x, y = r.y, w = r.w, h = r.h;
     var z = Math.min(1.6, 960 / h);
     var cx = x + w / 2, cy = y + h / 2;
     var ox = cx < 1920 * 0.4 ? 'left' : (cx > 1920 * 0.6 ? 'right' : 'center');
+    var oy = cy < 1080 * 0.42 ? 'top' : (cy > 1080 * 0.6 ? 'bottom' : 'center');
     var dx = 0;
     if (w * z > 1840) {
       // Too wide to grow as a whole: grow from the left, limited by where its content ends,
@@ -198,13 +210,50 @@ body.notes-on #notes { display: block; }
       ox = 'left';
       if (x + cw * z > 1900) dx = Math.max(20 - x, 1900 - (x + cw * z));
     }
+    else {
+      var left = ox === 'left' ? x : (ox === 'right' ? x + w - w * z : x + w / 2 - w * z / 2);
+      if (left + w * z > 1900) dx = 1900 - (left + w * z);
+      if (left + dx < 20) dx = 20 - left;
+    }
+    // Keep the enlarged box inside the slide vertically as well.
+    var top = oy === 'top' ? y : (oy === 'bottom' ? y + h - h * z : y + h / 2 - h * z / 2);
+    var dy = 0;
+    if (top + h * z > 1060) dy = 1060 - (top + h * z);
+    if (top + dy < 20) dy = 20 - top;
     box.style.setProperty('--dx', dx.toFixed(1) + 'px');
-    var oy = cy < 1080 * 0.42 ? 'top' : (cy > 1080 * 0.6 ? 'bottom' : 'center');
+    box.style.setProperty('--dy', dy.toFixed(1) + 'px');
     box.style.transformOrigin = ox + ' ' + oy;
     box.style.setProperty('--zoom', z.toFixed(3));
     box.classList.add('zoom');
   }
-  function zoomOut(box) { box.classList.remove('zoom', 'stack'); }
+  function zoomOut(box) {
+    box.classList.remove('zoom', 'stack');
+    var c = box.querySelector('.lead-clone');
+    if (c) c.remove();
+  }
+
+  // A compact copy of the figure above a block: each row becomes "label, then its bar(s)".
+  function leadClone(lead) {
+    var wrap = document.createElement('div');
+    wrap.className = 'lead-clone';
+    Array.prototype.forEach.call(lead.children, function (row) {
+      var kids = row.children;
+      if (kids.length >= 2 && kids[0].tagName === 'DIV') {
+        var r = document.createElement('div'); r.className = 'lead-row';
+        var label = kids[0].cloneNode(true); label.classList.add('lead-label');
+        var bars = document.createElement('div'); bars.className = 'lead-bars';
+        for (var i = 1; i < kids.length; i++) {
+          var k = kids[i].cloneNode(true);
+          if (k.tagName === 'DIV') k.style.height = '56px';
+          bars.appendChild(k);
+        }
+        r.appendChild(label); r.appendChild(bars); wrap.appendChild(r);
+      } else {
+        wrap.appendChild(row.cloneNode(true));
+      }
+    });
+    return wrap;
+  }
 
   // How far right the text, pictures and painted shapes of a box reach, in slide pixels from its left edge.
   function contentWidth(box) {
