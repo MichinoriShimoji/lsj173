@@ -427,6 +427,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { show(cur - 1); e.preventDefault(); }
     else if (k === 'Home') { show(0); e.preventDefault(); }
     else if (k === 'End') { show(slides.length - 1); e.preventDefault(); }
+    // P: open the presenter view (notes, next slide, timer) in another window.
+    else if ((k === 'p' || k === 'P') && !query.has('embed')) { window.open('presenter.html#slide-' + (cur + 1), 'lsj173-presenter'); }
   });
   window.addEventListener('hashchange', function () { var i = fromHash(); if (i !== cur) show(i, true); });
   window.addEventListener('resize', fit);
