@@ -80,6 +80,8 @@ body.notes-on #notes { display: block; }
   var GRAY = /background(-color)?\s*:\s*#f3f3f3/i;
   // Slides whose wide card is re-stacked while enlarged (see .stack).
   var STACK = { selection: 1 };
+  // Other blocks that enlarge on hover: the block that holds the paragraph containing this text.
+  var EXTRA = { operational: ['3つの変数', '16条件の分布図'] };
 
   function fit() {
     var w = viewport.clientWidth, h = viewport.clientHeight;
@@ -126,6 +128,15 @@ body.notes-on #notes { display: block; }
         if (STACK[sec.id]) el.classList.add('stackable');
       });
     }
+    (EXTRA[sec.id] || []).forEach(function (key) {
+      var ps = sec.querySelectorAll('p');
+      for (var i = 0; i < ps.length; i++) {
+        var box = ps[i].parentElement;
+        if (ps[i].textContent.indexOf(key) < 0 || !box || box === sec || ps[i].closest('aside')) continue;
+        box.classList.add('scene');
+        break;
+      }
+    });
     if (sec.querySelector('.scene')) {
       // The pointer is tested against each scene's place in the layout (not its
       // enlarged picture), so moving to the neighbouring scene switches at once.
