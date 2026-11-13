@@ -49,6 +49,10 @@ body.notes-on #notes { display: block; }
 #stage section .scene.card.stack { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
 #stage section .scene.card.stack div { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
 /* A block of label + line rows: while enlarged, each label sits above its line. */
+/* Section tabs in the header band: click to jump to the section's first slide. */
+#stage section .tab { position: relative; cursor: pointer; }
+#stage section .tab::after { content: ''; position: absolute; top: 0; bottom: 0; left: -28px; right: -28px; }
+#stage section .tab:hover { color: #111111 !important; }
 #stage section .scene.rows.stack { gap: 16px !important; }
 #stage section .scene.rows.stack > div { flex-direction: column !important; align-items: flex-start !important; gap: 0 !important; }
 #stage section .scene.rows.stack > div > p:first-child { width: auto !important; }
@@ -280,6 +284,38 @@ body.notes-on #notes { display: block; }
     return (right - left) / scale;
   }
 
+  // Header band: each section name jumps to the first slide of that section.
+  function band(sec) {
+    var kids = sec.children;
+    for (var i = 0; i < kids.length; i++) {
+      var st = kids[i].getAttribute('style') || '';
+      if (/position\s*:\s*absolute/.test(st) && /height\s*:\s*72px/.test(st)) return kids[i];
+    }
+    return null;
+  }
+  function tabKey(p) { return p.textContent.replace(/\s+/g, ' ').trim(); }
+  function linkTabs() {
+    var first = {};
+    slides.forEach(function (sec, i) {
+      var b = band(sec); if (!b) return;
+      b.querySelectorAll('p').forEach(function (p) {
+        if (!/font-weight\s*:\s*700/.test(p.getAttribute('style') || '')) return;
+        var key = tabKey(p);
+        if (!(key in first)) first[key] = i;
+      });
+    });
+    slides.forEach(function (sec) {
+      var b = band(sec); if (!b) return;
+      b.querySelectorAll('p').forEach(function (p) {
+        var key = tabKey(p);
+        if (!(key in first)) return;
+        p.classList.add('tab');
+        p.setAttribute('role', 'link');
+        p.addEventListener('click', function (e) { e.stopPropagation(); show(first[key]); });
+      });
+    });
+  }
+
   function show(i, replace) {
     if (!slides.length) return;
     cur = Math.max(0, Math.min(slides.length - 1, i));
@@ -326,6 +362,7 @@ body.notes-on #notes { display: block; }
         slides.push(sec);
       });
       if (!slides.length) throw new Error('no slides');
+      linkTabs();
       msg.style.display = 'none';
       fit();
       show(fromHash(), true);
