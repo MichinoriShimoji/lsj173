@@ -18,11 +18,20 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
 #count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
 #title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #aaa; padding: 0 8px; }
 #hint { color: #888; white-space: nowrap; }
-#notes { position: fixed; left: 0; right: 0; bottom: 44px; max-height: 32%; overflow: auto; box-sizing: border-box; padding: 14px 20px; background: rgba(17,17,17,.96); border-top: 1px solid #444; font-size: 16px; line-height: 1.7; display: none; }
-body.notes-on #notes { display: block; }
 #msg { position: fixed; inset: 0 0 44px 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 16px; line-height: 1.8; color: #ccc; }
 @media (max-width: 720px) { #hint, #title { display: none; } }
 
+/* Slide navigation: an arrow appears when the pointer is over the left or right margin of the slide. */
+#stage .nav { position: absolute; top: 72px; bottom: 0; width: 112px; z-index: 50; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s ease; -webkit-tap-highlight-color: transparent; }
+#stage #prev { left: 0; }
+#stage #next { right: 0; }
+#stage .nav:hover, #stage .nav:focus-visible { opacity: 1; outline: none; }
+#stage .nav[disabled] { display: none; }
+#stage.zooming .nav { pointer-events: none; opacity: 0; }
+#stage .nav span { width: 76px; height: 76px; border-radius: 50%; background: rgba(255,255,255,.94); border: 1px solid #d4d4d4; box-shadow: 0 2px 12px rgba(0,0,0,.14); display: flex; align-items: center; justify-content: center; }
+#stage .nav:focus-visible span { border-color: #111; }
+#stage .nav svg { width: 38px; height: 38px; fill: none; stroke: #111; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+@media (hover: none) { #stage .nav { opacity: .45; } }
 /* ---------- slide rendering (same rules as the slide format) ---------- */
 #stage section { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; box-sizing: border-box; overflow: hidden; font-family: 'Noto Sans JP', Arial, sans-serif; font-size: 32px; line-height: 1.4; color: #111; background: #fff; opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; }
 #stage section.current { opacity: 1; visibility: visible; transition: opacity .25s ease; z-index: 2; }
@@ -65,16 +74,12 @@ body.notes-on #notes { display: block; }
 </style>
 </head>
 <body>
-<div id="viewport"><div id="stage" aria-live="polite"></div></div>
+<div id="viewport"><div id="stage" aria-live="polite"><button id="prev" class="nav" type="button" aria-label="前のスライド"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8"/></svg></span></button><button id="next" class="nav" type="button" aria-label="次のスライド"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8"/></svg></span></button></div></div>
 <div id="msg">スライドを読み込んでいます…</div>
-<div id="notes" aria-label="発表者ノート"></div>
 <div id="bar">
-  <button id="prev" type="button" aria-label="前のスライド">◀</button>
   <span id="count">– / –</span>
-  <button id="next" type="button" aria-label="次のスライド">▶</button>
   <span id="title"></span>
-  <span id="hint">← → で移動　N でノート</span>
-  <button id="btn-notes" type="button">ノート</button>
+  <span id="hint">← → キー、またはスライド左右の端の矢印で移動</span>
   <button id="btn-full" type="button">全画面</button>
 </div>
 <script>
@@ -83,20 +88,18 @@ body.notes-on #notes { display: block; }
   var stage = document.getElementById('stage');
   var viewport = document.getElementById('viewport');
   var msg = document.getElementById('msg');
-  var notesBox = document.getElementById('notes');
   var slides = [];
   var cur = 0;
   // Slides whose pictures are maps, not scenes: no hover zoom there.
-  var NO_ZOOM = { cover: 1, sursurunga: 1, abruzzese: 1 };
+  var NO_ZOOM = { cover: 1, sursurunga: 1, abruzzese: 1, operational: 1 };
   // Slides whose gray boxes are statements or figures, not example cards.
-  var NO_CARD = { claim: 1, cross: 1, questions: 1 };
+  var NO_CARD = { claim: 1, cross: 1, questions: 1, operational: 1 };
   var GRAY = /background(-color)?\s*:\s*#f3f3f3/i;
   // Slides whose wide card is re-stacked while enlarged (see .stack).
   var STACK = { selection: 1 };
   // Other blocks that enlarge on hover: the block that holds the paragraph containing this text.
   //   up: how many levels above that paragraph the block is; rows: re-stack its rows while enlarged.
   var EXTRA = {
-    operational: [{ key: '3つの変数', up: 1 }, { key: '16条件の分布図', up: 1 }],
     hierarchy: [{ key: 'Bagvalal', up: 2, rows: true, lead: true }]
   };
 
@@ -229,11 +232,13 @@ body.notes-on #notes { display: block; }
     box.style.transformOrigin = ox + ' ' + oy;
     box.style.setProperty('--zoom', z.toFixed(3));
     box.classList.add('zoom');
+    stage.classList.add('zooming');
   }
   function zoomOut(box) {
     box.classList.remove('zoom', 'stack');
     var c = box.querySelector('.lead-clone');
     if (c) c.remove();
+    if (!stage.querySelector('.scene.zoom')) stage.classList.remove('zooming');
   }
 
   // A compact copy of the figure above a block: each row becomes "label, then its bar(s)".
@@ -324,10 +329,10 @@ body.notes-on #notes { display: block; }
       if (k !== cur) s.querySelectorAll('.scene.zoom').forEach(zoomOut);
     });
     document.getElementById('count').textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
     var h = slides[cur].querySelector('h1, h2');
     document.getElementById('title').textContent = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
-    var a = slides[cur].querySelector('aside');
-    notesBox.textContent = a ? a.textContent.trim() : '（このスライドにノートはありません）';
     var hash = '#slide-' + (cur + 1);
     if (location.hash !== hash) {
       try { if (replace) history.replaceState(null, '', hash); else location.hash = hash; } catch (e) { /* ignore */ }
@@ -371,9 +376,8 @@ body.notes-on #notes { display: block; }
     });
   }
 
-  document.getElementById('prev').addEventListener('click', function () { show(cur - 1); });
-  document.getElementById('next').addEventListener('click', function () { show(cur + 1); });
-  document.getElementById('btn-notes').addEventListener('click', function () { document.body.classList.toggle('notes-on'); });
+  document.getElementById('prev').addEventListener('click', function () { this.blur(); show(cur - 1); });
+  document.getElementById('next').addEventListener('click', function () { this.blur(); show(cur + 1); });
   document.getElementById('btn-full').addEventListener('click', function () {
     try {
       if (document.fullscreenElement) document.exitFullscreen();
@@ -387,7 +391,6 @@ body.notes-on #notes { display: block; }
     else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { show(cur - 1); e.preventDefault(); }
     else if (k === 'Home') { show(0); e.preventDefault(); }
     else if (k === 'End') { show(slides.length - 1); e.preventDefault(); }
-    else if (k === 'n' || k === 'N') { document.body.classList.toggle('notes-on'); }
   });
   window.addEventListener('hashchange', function () { var i = fromHash(); if (i !== cur) show(i, true); });
   window.addEventListener('resize', fit);
