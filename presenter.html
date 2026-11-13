@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>発表者ビュー｜代名詞複数と仲間性</title>
+<style>
+html, body { height: 100%; margin: 0; background: #161616; color: #ececec; font-family: 'Noto Sans JP', -apple-system, 'Hiragino Sans', 'Yu Gothic', Arial, sans-serif; overflow: hidden; }
+#wrap { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); gap: 16px; padding: 16px; box-sizing: border-box; }
+.col { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+.label { font-size: 13px; letter-spacing: .06em; color: #9a9a9a; }
+.frame { position: relative; width: 100%; aspect-ratio: 16 / 9; flex: 0 0 auto; background: #000; border-radius: 8px; overflow: hidden; }
+.frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+#cur-frame { max-height: 56vh; }
+#next-frame iframe { pointer-events: none; }
+#next-end { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: #9a9a9a; font-size: 15px; background: #222; }
+#notes { flex: 1 1 auto; min-height: 0; overflow: auto; box-sizing: border-box; padding: 16px 20px; background: #222; border: 1px solid #333; border-radius: 8px; font-size: 22px; line-height: 1.8; white-space: pre-wrap; }
+#notes-head { display: flex; align-items: center; gap: 8px; }
+#notes-head .label { flex: 1; }
+.panel { background: #222; border: 1px solid #333; border-radius: 8px; padding: 14px 16px; }
+#timer { font-size: 64px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+#timer.over { color: #ffffff; text-decoration: underline; }
+#timer-sub { font-size: 14px; color: #9a9a9a; margin-top: 2px; }
+#count { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#title { font-size: 15px; color: #c8c8c8; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+button { font: inherit; font-size: 14px; color: #ececec; background: #2e2e2e; border: 1px solid #4a4a4a; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover { background: #3c3c3c; }
+button:focus-visible { outline: 2px solid #7aa2ff; outline-offset: 1px; }
+button.main { background: #ececec; color: #111; border-color: #ececec; font-weight: 700; }
+button.main:hover { background: #fff; }
+#help { font-size: 13px; line-height: 1.7; color: #9a9a9a; margin: 0; padding-left: 1.2em; }
+#msg { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 16px; line-height: 1.8; color: #ccc; background: #161616; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="col">
+    <div class="frame" id="cur-frame"><iframe id="cur" title="現在のスライド"></iframe></div>
+    <div id="notes-head">
+      <span class="label">ノート</span>
+      <button id="smaller" type="button" aria-label="ノートの文字を小さく">A−</button>
+      <button id="larger" type="button" aria-label="ノートの文字を大きく">A＋</button>
+    </div>
+    <div id="notes" tabindex="0"></div>
+  </div>
+  <div class="col">
+    <span class="label">次のスライド</span>
+    <div class="frame" id="next-frame"><iframe id="next" title="次のスライド" tabindex="-1"></iframe><div id="next-end">最後のスライドです</div></div>
+    <div class="panel">
+      <div id="timer">00:00</div>
+      <div id="timer-sub">目安 20:00　／　現在時刻 <span id="clock">--:--</span></div>
+      <div class="row" style="margin-top:10px">
+        <button id="t-toggle" type="button">開始</button>
+        <button id="t-reset" type="button">リセット</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div id="count">– / –</div>
+      <div id="title"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="b-prev" type="button" aria-label="前のスライド">◀ 前</button>
+        <button id="b-next" type="button" aria-label="次のスライド">次 ▶</button>
+      </div>
+    </div>
+    <div class="row"><button id="open" class="main" type="button">聴衆用ウィンドウを開く</button></div>
+    <ol id="help">
+      <li>プロジェクタを「拡張ディスプレイ」としてつなぐ</li>
+      <li>「聴衆用ウィンドウを開く」→ そのウィンドウをプロジェクタ側へ移し、「全画面」を押す</li>
+      <li>このウィンドウで ← → を押すと、両方が一緒に進む。上のスライドでのホバー拡大も聴衆側に出る</li>
+    </ol>
+  </div>
+</div>
+<div id="msg">読み込んでいます…</div>
+<script>
+(function () {
+  'use strict';
+  var notes = [], titles = [];
+  var cur = 0, ready = false, readyAt = 0;
+  var curFrame = document.getElementById('cur');
+  var nextFrame = document.getElementById('next');
+  var nextEnd = document.getElementById('next-end');
+  var notesBox = document.getElementById('notes');
+  var msg = document.getElementById('msg');
+  var chan = null;
+  try { chan = new BroadcastChannel('lsj173-deck'); } catch (e) { chan = null; }
+
+  function fromHash() {
+    var m = /^#slide-(\d+)$/.exec(location.hash);
+    return m ? parseInt(m[1], 10) - 1 : 0;
+  }
+  function setNext() {
+    var last = cur >= notes.length - 1;
+    nextEnd.style.display = last ? 'flex' : 'none';
+    if (last) return;
+    var hash = '#slide-' + (cur + 2);
+    try {
+      if (nextFrame.contentWindow && nextFrame.getAttribute('src')) nextFrame.contentWindow.location.replace('index.html?embed=1&solo=1' + hash);
+      else nextFrame.setAttribute('src', 'index.html?embed=1&solo=1' + hash);
+    } catch (e) { nextFrame.setAttribute('src', 'index.html?embed=1&solo=1' + hash); }
+  }
+  // remote: another window moved; this view only follows.
+  function set(i, remote) {
+    if (!ready) return;
+    var before = cur;
+    cur = Math.max(0, Math.min(notes.length - 1, i));
+    notesBox.textContent = notes[cur] || '（このスライドにノートはありません）';
+    notesBox.scrollTop = 0;
+    document.getElementById('count').textContent = (cur + 1) + ' / ' + notes.length;
+    document.getElementById('title').textContent = titles[cur] || '';
+    setNext();
+    try { history.replaceState(null, '', '#slide-' + (cur + 1)); } catch (e) { /* ignore */ }
+    if (!remote && chan) chan.postMessage({ t: 'goto', i: cur });
+    // The clock starts with the first move forward (not with the jump that syncs this view just after loading).
+    if (cur > before && !started && !elapsed && Date.now() - readyAt > 2000) startTimer();
+  }
+  if (chan) {
+    chan.onmessage = function (e) {
+      var m = e.data || {};
+      if ((m.t === 'slide' || m.t === 'goto') && m.i !== cur) set(m.i, true);
+    };
+  }
+
+  // ---- timer
+  var started = 0, elapsed = 0;
+  function fmt(ms) {
+    var s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+    s = s % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function paint() {
+    var ms = elapsed + (started ? Date.now() - started : 0);
+    var t = document.getElementById('timer');
+    t.textContent = fmt(ms);
+    t.classList.toggle('over', ms >= 20 * 60 * 1000);
+    var d = new Date();
+    document.getElementById('clock').textContent = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+    document.getElementById('t-toggle').textContent = started ? '一時停止' : (elapsed ? '再開' : '開始');
+  }
+  function startTimer() { if (!started) { started = Date.now(); paint(); } }
+  function pauseTimer() { if (started) { elapsed += Date.now() - started; started = 0; paint(); } }
+  document.getElementById('t-toggle').addEventListener('click', function () { this.blur(); if (started) pauseTimer(); else startTimer(); });
+  document.getElementById('t-reset').addEventListener('click', function () { this.blur(); started = 0; elapsed = 0; paint(); });
+  setInterval(paint, 500);
+  paint();
+
+  // ---- controls
+  document.getElementById('b-prev').addEventListener('click', function () { this.blur(); set(cur - 1); });
+  document.getElementById('b-next').addEventListener('click', function () { this.blur(); set(cur + 1); });
+  document.getElementById('open').addEventListener('click', function () {
+    this.blur();
+    window.open('index.html#slide-' + (cur + 1), 'lsj173-audience', 'popup,width=1280,height=764');
+  });
+  var size = 22;
+  try { size = parseInt(localStorage.getItem('lsj173-notes-size'), 10) || 22; } catch (e) { /* no storage */ }
+  function setSize(v) {
+    size = Math.max(14, Math.min(44, v));
+    notesBox.style.fontSize = size + 'px';
+    try { localStorage.setItem('lsj173-notes-size', String(size)); } catch (e) { /* no storage */ }
+  }
+  setSize(size);
+  document.getElementById('smaller').addEventListener('click', function () { this.blur(); setSize(size - 2); });
+  document.getElementById('larger').addEventListener('click', function () { this.blur(); setSize(size + 2); });
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { set(cur + 1); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { set(cur - 1); e.preventDefault(); }
+    else if (k === 'Home') { set(0); e.preventDefault(); }
+    else if (k === 'End') { set(notes.length - 1); e.preventDefault(); }
+  });
+
+  // ---- load the notes from the slide files
+  fetch('project/deck.json').then(function (r) {
+    if (!r.ok) throw new Error('deck.json ' + r.status);
+    return r.json();
+  }).then(function (deck) {
+    return Promise.all((deck.order || []).map(function (id) {
+      return fetch('project/slides/' + id + '.html').then(function (r) {
+        if (!r.ok) throw new Error(id + ' ' + r.status);
+        return r.text();
+      });
+    }));
+  }).then(function (parts) {
+    var parser = new DOMParser();
+    parts.forEach(function (html) {
+      var doc = parser.parseFromString(html, 'text/html');
+      var a = doc.querySelector('aside');
+      var h = doc.querySelector('h1, h2');
+      notes.push(a ? a.textContent.replace(/\s+/g, ' ').trim() : '');
+      titles.push(h ? h.textContent.replace(/\s+/g, ' ').trim() : '');
+    });
+    if (!notes.length) throw new Error('no slides');
+    ready = true;
+    readyAt = Date.now();
+    msg.style.display = 'none';
+    cur = Math.max(0, Math.min(notes.length - 1, fromHash()));
+    curFrame.setAttribute('src', 'index.html?embed=1#slide-' + (cur + 1));
+    set(cur, true);
+  }).catch(function (err) {
+    msg.textContent = '読み込めませんでした（' + err.message + '）。';
+  });
+})();
+</script>
+</body>
+</html>

@@ -21,6 +21,10 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
 #msg { position: fixed; inset: 0 0 44px 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 16px; line-height: 1.8; color: #ccc; }
 @media (max-width: 720px) { #hint, #title { display: none; } }
 
+/* Inside the presenter view: the slide only. */
+.embed #bar, .embed #stage .nav { display: none; }
+.embed #viewport, .embed #msg { inset: 0; }
+.embed #stage { box-shadow: none; }
 /* Slide navigation: an arrow appears when the pointer is over the left or right margin of the slide. */
 #stage .nav { position: absolute; top: 72px; bottom: 0; width: 112px; z-index: 50; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .15s ease; -webkit-tap-highlight-color: transparent; }
 #stage #prev { left: 0; }
@@ -90,6 +94,27 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
   var msg = document.getElementById('msg');
   var slides = [];
   var cur = 0;
+  // ?embed: shown inside the presenter view (no bar, no arrows). ?solo: does not follow other windows.
+  var query = new URLSearchParams(location.search);
+  if (query.has('embed')) document.documentElement.classList.add('embed');
+  // Windows of this deck that are open in the same browser stay on the same slide and the same enlarged block.
+  var chan = null;
+  try { if (!query.has('solo') && 'BroadcastChannel' in window) chan = new BroadcastChannel('lsj173-deck'); } catch (e) { chan = null; }
+  function post(m) { if (chan) { try { chan.postMessage(m); } catch (e) { /* ignore */ } } }
+  if (chan) {
+    chan.onmessage = function (e) {
+      var m = e.data || {};
+      if (!slides.length) return;
+      if (m.t === 'slide' || m.t === 'goto') { if (m.i !== cur) show(m.i, true, true); }
+      else if (m.t === 'ask') post({ t: 'slide', i: cur });
+      else if (m.t === 'zoom') {
+        var sec = slides[m.i];
+        var box = sec ? sec.querySelectorAll('.scene')[m.k] : null;
+        if (!box) return;
+        if (m.on) zoomIn(box, sec, true); else zoomOut(box, true);
+      }
+    };
+  }
   // Slides whose pictures are maps, not scenes: no hover zoom there.
   var NO_ZOOM = { cover: 1, sursurunga: 1, abruzzese: 1, operational: 1 };
   // Slides whose gray boxes are statements or figures, not example cards.
@@ -171,7 +196,7 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
       // The pointer is tested against each scene's place in the layout (not its
       // enlarged picture), so moving to the neighbouring scene switches at once.
       sec.addEventListener('mousemove', function (e) { hit(sec, e, false); });
-      sec.addEventListener('mouseleave', function () { sec.querySelectorAll('.scene.zoom').forEach(zoomOut); });
+      sec.addEventListener('mouseleave', function () { sec.querySelectorAll('.scene.zoom').forEach(function (b) { zoomOut(b); }); });
       sec.addEventListener('click', function (e) { hit(sec, e, true); });
     }
   }
@@ -203,8 +228,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     else if (open) zoomOut(open);
   }
 
-  function zoomIn(box, sec) {
-    sec.querySelectorAll('.scene.zoom').forEach(function (b) { if (b !== box) zoomOut(b); });
+  function zoomIn(box, sec, remote) {
+    sec.querySelectorAll('.scene.zoom').forEach(function (b) { if (b !== box) zoomOut(b, true); });
     if (box.classList.contains('stackable')) box.classList.add('stack');
     if (box._lead && !box.querySelector('.lead-clone')) box.insertBefore(leadClone(box._lead), box.firstChild);
     var r = place(box, sec);
@@ -239,8 +264,11 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     box.style.setProperty('--zoom', z.toFixed(3));
     box.classList.add('zoom');
     stage.classList.add('zooming');
+    if (!remote) post({ t: 'zoom', on: true, i: slides.indexOf(sec), k: sceneIndex(box, sec) });
   }
-  function zoomOut(box) {
+  function sceneIndex(box, sec) { return Array.prototype.indexOf.call(sec.querySelectorAll('.scene'), box); }
+  function zoomOut(box, remote) {
+    if (!remote && box.classList.contains('zoom')) { var sec = box.closest('section'); post({ t: 'zoom', on: false, i: slides.indexOf(sec), k: sceneIndex(box, sec) }); }
     box.classList.remove('zoom', 'stack');
     var c = box.querySelector('.lead-clone');
     if (c) c.remove();
@@ -327,12 +355,12 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     });
   }
 
-  function show(i, replace) {
+  function show(i, replace, silent) {
     if (!slides.length) return;
     cur = Math.max(0, Math.min(slides.length - 1, i));
     slides.forEach(function (s, k) {
       s.classList.toggle('current', k === cur);
-      if (k !== cur) s.querySelectorAll('.scene.zoom').forEach(zoomOut);
+      if (k !== cur) s.querySelectorAll('.scene.zoom').forEach(function (b) { zoomOut(b, true); });
     });
     document.getElementById('count').textContent = (cur + 1) + ' / ' + slides.length;
     document.getElementById('prev').disabled = cur === 0;
@@ -343,6 +371,7 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     if (location.hash !== hash) {
       try { if (replace) history.replaceState(null, '', hash); else location.hash = hash; } catch (e) { /* ignore */ }
     }
+    if (!silent) post({ t: 'slide', i: cur });
   }
   function fromHash() {
     var m = /^#slide-(\d+)$/.exec(location.hash || '');
@@ -376,7 +405,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
       linkTabs();
       msg.style.display = 'none';
       fit();
-      show(fromHash(), true);
+      show(fromHash(), true, true);
+      post({ t: 'ask' });
     }).catch(function (err) {
       msg.textContent = 'スライドを読み込めませんでした（' + err.message + '）。';
     });
