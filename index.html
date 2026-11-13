@@ -44,6 +44,7 @@ body.notes-on #notes { display: block; }
 /* ---------- hover: enlarge a scene (picture + caption + line) ---------- */
 #stage section .scene { position: relative; transition: transform .2s ease, box-shadow .2s ease; }
 #stage section .scene.zoom { z-index: 60; background-color: #fff; border-radius: 12px; box-shadow: 0 0 0 18px #fff, 0 18px 70px 18px rgba(0,0,0,.32); transform: scale(var(--zoom, 1.45)); pointer-events: none; }
+#stage section .scene.card.zoom { background-color: #f3f3f3; border-radius: 10px; box-shadow: 0 0 0 6px #fff, 0 14px 60px 10px rgba(0,0,0,.34); }
 @media (prefers-reduced-motion: reduce) { #stage section, #stage section .scene { transition: none; } }
 </style>
 </head>
@@ -71,6 +72,9 @@ body.notes-on #notes { display: block; }
   var cur = 0;
   // Slides whose pictures are maps, not scenes: no hover zoom there.
   var NO_ZOOM = { cover: 1, sursurunga: 1, abruzzese: 1 };
+  // Slides whose gray boxes are statements or figures, not example cards.
+  var NO_CARD = { claim: 1, cross: 1, typology: 1, questions: 1 };
+  var GRAY = /background(-color)?\s*:\s*#f3f3f3/i;
 
   function fit() {
     var w = viewport.clientWidth, h = viewport.clientHeight;
@@ -104,6 +108,19 @@ body.notes-on #notes { display: block; }
         if (box.querySelectorAll('p').length === 0) return;
         box.classList.add('scene');
       });
+    }
+    // Example cards: every gray box that holds an example (stimulus, gloss, form).
+    if (!NO_CARD[sec.id]) {
+      sec.querySelectorAll('div, p').forEach(function (el) {
+        var st = el.getAttribute('style') || '';
+        if (!GRAY.test(st)) return;
+        if (/position\s*:\s*absolute/.test(st) && /height\s*:\s*72px/.test(st)) return; // header band
+        if (el.closest('.scene') || el.closest('aside')) return;
+        if (!(el.textContent || '').trim()) return;
+        el.classList.add('scene', 'card');
+      });
+    }
+    if (sec.querySelector('.scene')) {
       // The pointer is tested against each scene's place in the layout (not its
       // enlarged picture), so moving to the neighbouring scene switches at once.
       sec.addEventListener('mousemove', function (e) { hit(sec, e, false); });
@@ -139,16 +156,40 @@ body.notes-on #notes { display: block; }
     sec.querySelectorAll('.scene.zoom').forEach(function (b) { if (b !== box) zoomOut(b); });
     var r = place(box, sec);
     var x = r.x, y = r.y, w = r.w, h = r.h;
-    var z = Math.min(1.6, 1800 / w, 960 / h);
-    if (z < 1.08) z = 1.08;
+    var z = Math.min(1.6, 960 / h);
     var cx = x + w / 2, cy = y + h / 2;
     var ox = cx < 1920 * 0.4 ? 'left' : (cx > 1920 * 0.6 ? 'right' : 'center');
+    if (w * z > 1840) {
+      // Too wide to grow as a whole: grow from the left, limited by where its text ends.
+      var tw = textWidth(box);
+      z = Math.min(z, (1900 - x) / (tw + 36));
+      ox = 'left';
+    }
+    if (z < 1.1) z = 1.1;
     var oy = cy < 1080 * 0.42 ? 'top' : (cy > 1080 * 0.6 ? 'bottom' : 'center');
     box.style.transformOrigin = ox + ' ' + oy;
     box.style.setProperty('--zoom', z.toFixed(3));
     box.classList.add('zoom');
   }
   function zoomOut(box) { box.classList.remove('zoom'); }
+
+  // How far right the text and pictures of a box reach, in slide pixels from its left edge.
+  function textWidth(box) {
+    var scale = stage.getBoundingClientRect().width / 1920 || 1;
+    var left = box.getBoundingClientRect().left, right = left;
+    var walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null);
+    var range = document.createRange(), node;
+    while ((node = walker.nextNode())) {
+      if (!node.nodeValue.trim()) continue;
+      range.selectNodeContents(node);
+      var rects = range.getClientRects();
+      for (var i = 0; i < rects.length; i++) if (rects[i].right > right) right = rects[i].right;
+    }
+    box.querySelectorAll('img, svg').forEach(function (g) {
+      var r = g.getBoundingClientRect(); if (r.right > right) right = r.right;
+    });
+    return (right - left) / scale;
+  }
 
   function show(i, replace) {
     if (!slides.length) return;
