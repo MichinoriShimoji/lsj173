@@ -99,11 +99,13 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
   try { var dataEl = document.getElementById('deck-data'); if (dataEl) DATA = JSON.parse(dataEl.textContent); } catch (e) { DATA = null; }
   // ?embed: shown inside the presenter view (no bar, no arrows). ?solo: does not follow other windows.
   var query = new URLSearchParams(location.search);
+  // A second deck on the same site (<html data-deck="name">) keeps its windows and notes apart from the first.
+  var SCOPE = document.documentElement.getAttribute('data-deck') ? ':' + document.documentElement.getAttribute('data-deck') : '';
   if (query.has('embed')) document.documentElement.classList.add('embed');
   if (query.has('solo')) document.documentElement.classList.add('solo');
   // Windows of this deck that are open in the same browser stay on the same slide and the same enlarged block.
   var chan = null;
-  try { if (!query.has('solo') && 'BroadcastChannel' in window) chan = new BroadcastChannel('lsj173-deck'); } catch (e) { chan = null; }
+  try { if (!query.has('solo') && 'BroadcastChannel' in window) chan = new BroadcastChannel('lsj173-deck' + SCOPE); } catch (e) { chan = null; }
   var readyAt = Infinity;
   function post(m) { if (chan) { try { chan.postMessage(m); } catch (e) { /* ignore */ } } }
   if (chan) {
@@ -442,7 +444,7 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     else if (k === 'Home') { show(0); e.preventDefault(); }
     else if (k === 'End') { show(slides.length - 1); e.preventDefault(); }
     // P: open the presenter view (notes, next slide, timer) in another window.
-    else if ((k === 'p' || k === 'P') && !query.has('embed') && location.protocol !== 'file:') { window.open('presenter.html?t=' + Date.now() + '#slide-' + (cur + 1), 'lsj173-presenter'); }
+    else if ((k === 'p' || k === 'P') && !query.has('embed') && location.protocol !== 'file:') { window.open('presenter.html?t=' + Date.now() + '#slide-' + (cur + 1), 'lsj173-presenter' + SCOPE); }
   });
   window.addEventListener('hashchange', function () { var i = fromHash(); if (i !== cur) show(i, true); });
   window.addEventListener('resize', fit);

@@ -4,6 +4,11 @@
 
 - スライド（聴衆用）: https://michinorishimoji.github.io/lsj173/
 - 発表者ビュー（ノート・次のスライド・タイマー）: https://michinorishimoji.github.io/lsj173/presenter.html
+
+ワークショップ趣旨説明（下地、10分）のスライド
+
+- スライド（聴衆用）: https://michinorishimoji.github.io/lsj173/intro/
+- 発表者ビュー: https://michinorishimoji.github.io/lsj173/intro/presenter.html
 - 操作: ← → キー、またはスライド左右の端の矢印で移動。場面の絵や例文カードにカーソルを載せると拡大
 
 ## 構成
@@ -15,3 +20,4 @@
 - `project/slides/*.html` … スライド1枚ごとの内容
 - `img/` … スライドで使う画像
 - `tools/build_single_file.py` … `index.html` を作るスクリプト
+- `intro/` … 趣旨説明のスライド一式（同じ構成。`viewer.html` と `presenter.html` は `tools/sync_intro.py` で上のものから写す）
