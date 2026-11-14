@@ -203,6 +203,8 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
         break;
       }
     });
+    // A slide can also mark its own blocks: any element with the attribute data-zoom enlarges on hover.
+    sec.querySelectorAll('[data-zoom]').forEach(function (el) { if (!el.closest('.scene') && !el.closest('aside')) el.classList.add('scene'); });
     if (sec.querySelector('.scene')) {
       // The pointer is tested against each scene's place in the layout (not its
       // enlarged picture), so moving to the neighbouring scene switches at once.
