@@ -251,6 +251,9 @@ html, body { height: 100%; margin: 0; background: #1b1b1b; color: #e8e8e8; font-
     var cx = x + w / 2, cy = y + h / 2;
     var ox = cx < 1920 * 0.4 ? 'left' : (cx > 1920 * 0.6 ? 'right' : 'center');
     var oy = cy < 1080 * 0.42 ? 'top' : (cy > 1080 * 0.6 ? 'bottom' : 'center');
+    // A slide can say which way a block grows: data-zoom-origin="center bottom" keeps the bottom edge in place, and so on.
+    var want = (box.getAttribute('data-zoom-origin') || '').split(' ');
+    if (want.length === 2) { ox = want[0]; oy = want[1]; }
     var dx = 0;
     if (w * z > 1840) {
       // Too wide to grow as a whole: grow from the left, limited by where its content ends,
